@@ -1,0 +1,13 @@
+{
+  "name": "netsjs-root",
+  "private": true,
+  "scripts": {
+    "dev": "npm --prefix backend run dev",
+    "dev:front": "npm --prefix frontend run dev",
+    "dev:back": "npm --prefix backend run dev",
+    "start:dev": "npm --prefix backend run start:dev",
+    "start": "npm --prefix backend run start",
+    "build": "npm --prefix backend run build",
+    "build:front": "npm --prefix frontend run build"
+  }
+}
