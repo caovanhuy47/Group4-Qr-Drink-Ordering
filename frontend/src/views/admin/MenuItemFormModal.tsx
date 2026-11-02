@@ -120,14 +120,14 @@ export const MenuItemFormModal: React.FC<MenuItemFormModalProps> = ({ dish, onCl
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 md:p-6 bg-on-surface/50 backdrop-blur-sm animate-fade-in" role="dialog" aria-modal="true">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 md:p-6 bg-on-surface/50 backdrop-blur-sm animate-fade-in" role="dialog" aria-modal="true" aria-labelledby="modal-title">
       <div className="absolute inset-0" onClick={() => !isSubmitting && onClose()} aria-hidden="true" />
 
       <div className="relative z-10 w-full max-w-4xl bg-surface-container-lowest rounded-2xl max-h-[92vh] flex flex-col overflow-hidden shadow-warm-lg animate-pop-in border border-border">
         {/* Modal Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-surface-container-low/50">
           <div>
-            <h3 className="font-headline font-bold text-lg text-on-surface">
+            <h3 id="modal-title" className="font-headline font-bold text-lg text-on-surface">
               {dish ? 'Chỉnh Sửa Món Ăn' : 'Thêm Món Mới Vào Thực Đơn'}
             </h3>
             <span className="text-xs text-on-surface-variant">

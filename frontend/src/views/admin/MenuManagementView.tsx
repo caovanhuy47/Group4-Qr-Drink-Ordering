@@ -215,7 +215,8 @@ export const MenuManagementView: React.FC = () => {
             <button
               type="button"
               onClick={() => refreshDishes()}
-              className="h-10 px-3 rounded-xl bg-surface-container hover:bg-surface-container-high text-on-surface font-semibold text-xs flex items-center gap-1 transition-colors"
+              aria-label="Làm mới thực đơn"
+              className="h-10 px-3.5 rounded-xl bg-surface-container hover:bg-surface-container-high text-on-surface font-semibold text-xs flex items-center gap-1.5 transition-colors"
               title="Làm mới thực đơn từ máy chủ"
             >
               <span className={`material-symbols-outlined text-[16px] ${isDishesLoading ? 'animate-spin' : ''}`}>
@@ -227,7 +228,7 @@ export const MenuManagementView: React.FC = () => {
             {/* Add New Dish CTA */}
             <button
               onClick={handleAddNew}
-              className="h-10 px-4 rounded-xl bg-primary hover:bg-primary-hover text-on-primary font-bold text-xs md:text-sm flex items-center gap-1.5 shadow-xs transition-colors shrink-0"
+              className="h-10 px-4 rounded-xl bg-primary hover:bg-primary-hover text-on-primary font-bold text-xs md:text-sm flex items-center gap-1.5 shadow-xs transition-colors shrink-0 active:scale-98"
             >
               <span className="material-symbols-outlined text-[18px]">add</span>
               <span>Thêm món</span>
@@ -292,14 +293,14 @@ export const MenuManagementView: React.FC = () => {
             <>
               {/* Desktop Data Table (> 768px) */}
               <div className="hidden md:block overflow-x-auto">
-                <table className="w-full text-left text-xs md:text-sm">
+                <table className="w-full text-left text-xs md:text-sm min-w-[700px]">
                   <thead className="bg-surface-container-low border-b border-border text-on-surface-variant font-bold uppercase tracking-wider text-[11px]">
                     <tr>
-                      <th className="py-3 px-4">Món ăn</th>
-                      <th className="py-3 px-4">Danh mục</th>
-                      <th className="py-3 px-4">Giá bán</th>
-                      <th className="py-3 px-4">Trạng thái bán</th>
-                      <th className="py-3 px-4 text-right">Thao tác</th>
+                      <th className="py-3.5 px-4 w-[38%]">Món ăn</th>
+                      <th className="py-3.5 px-4 w-[18%]">Danh mục</th>
+                      <th className="py-3.5 px-4 w-[16%]">Giá bán</th>
+                      <th className="py-3.5 px-4 w-[16%]">Trạng thái bán</th>
+                      <th className="py-3.5 px-4 w-[12%] text-right">Thao tác</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border/60">
@@ -353,7 +354,7 @@ export const MenuManagementView: React.FC = () => {
                             type="button"
                             onClick={() => handleToggleStatus(dish)}
                             disabled={processingDishId === dish.id}
-                            className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold transition-all ${
+                            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all ${
                               dish.isAvailable
                                 ? 'bg-tertiary-soft text-tertiary border border-tertiary-container/30 hover:opacity-85'
                                 : 'bg-surface-container text-on-surface-variant border border-border hover:opacity-85'
@@ -370,11 +371,12 @@ export const MenuManagementView: React.FC = () => {
 
                         {/* Actions */}
                         <td className="py-3.5 px-4 text-right">
-                          <div className="flex items-center justify-end gap-1.5">
+                          <div className="flex items-center justify-end gap-1">
                             <button
                               type="button"
                               onClick={() => handleEdit(dish)}
-                              className="p-2 text-on-surface-variant hover:text-primary hover:bg-surface-container rounded-lg transition-colors"
+                              aria-label={`Chỉnh sửa ${dish.name}`}
+                              className="w-8 h-8 flex items-center justify-center text-on-surface-variant hover:text-primary hover:bg-surface-container rounded-lg transition-colors"
                               title="Chỉnh sửa món"
                             >
                               <span className="material-symbols-outlined text-[18px]">edit</span>
@@ -382,7 +384,8 @@ export const MenuManagementView: React.FC = () => {
                             <button
                               type="button"
                               onClick={() => setDishToDelete(dish)}
-                              className="p-2 text-on-surface-variant hover:text-error hover:bg-surface-container rounded-lg transition-colors"
+                              aria-label={`Xóa ${dish.name}`}
+                              className="w-8 h-8 flex items-center justify-center text-on-surface-variant hover:text-error hover:bg-surface-container rounded-lg transition-colors"
                               title="Xóa món"
                             >
                               <span className="material-symbols-outlined text-[18px]">delete</span>
@@ -434,7 +437,7 @@ export const MenuManagementView: React.FC = () => {
                         type="button"
                         onClick={() => handleToggleStatus(dish)}
                         disabled={processingDishId === dish.id}
-                        className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold transition-all ${
+                        className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold transition-all ${
                           dish.isAvailable
                             ? 'bg-tertiary-soft text-tertiary border border-tertiary-container/30'
                             : 'bg-surface-container text-on-surface-variant border border-border'
@@ -448,22 +451,24 @@ export const MenuManagementView: React.FC = () => {
                         <span>{dish.isAvailable ? 'Còn món' : 'Hết món'}</span>
                       </button>
 
-                      <div className="flex items-center gap-1">
+                      <div className="flex items-center gap-1.5">
                         <button
                           type="button"
                           onClick={() => handleEdit(dish)}
-                          className="p-2 rounded-lg bg-surface-container text-on-surface hover:bg-surface-container-high transition-colors"
+                          aria-label={`Sửa ${dish.name}`}
+                          className="w-9 h-9 flex items-center justify-center rounded-xl bg-surface-container text-on-surface hover:bg-surface-container-high transition-colors"
                           title="Sửa"
                         >
-                          <span className="material-symbols-outlined text-[16px]">edit</span>
+                          <span className="material-symbols-outlined text-[18px]">edit</span>
                         </button>
                         <button
                           type="button"
                           onClick={() => setDishToDelete(dish)}
-                          className="p-2 rounded-lg bg-surface-container text-error hover:bg-error-container/30 transition-colors"
+                          aria-label={`Xóa ${dish.name}`}
+                          className="w-9 h-9 flex items-center justify-center rounded-xl bg-surface-container text-error hover:bg-error-container/30 transition-colors"
                           title="Xóa"
                         >
-                          <span className="material-symbols-outlined text-[16px]">delete</span>
+                          <span className="material-symbols-outlined text-[18px]">delete</span>
                         </button>
                       </div>
                     </div>
@@ -531,7 +536,7 @@ export const MenuManagementView: React.FC = () => {
 
       {/* Delete Confirmation Dialog */}
       {dishToDelete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-on-surface/50 backdrop-blur-xs animate-fade-in" role="dialog" aria-modal="true">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-on-surface/50 backdrop-blur-xs animate-fade-in" role="dialog" aria-modal="true" aria-labelledby="delete-dialog-title">
           <div className="absolute inset-0" onClick={() => !processingDishId && setDishToDelete(null)} aria-hidden="true" />
           <div className="relative z-10 w-full max-w-md bg-surface-container-lowest border border-border rounded-2xl p-5 shadow-warm-lg space-y-4 animate-pop-in">
             <div className="flex items-start gap-3">
@@ -539,13 +544,13 @@ export const MenuManagementView: React.FC = () => {
                 <span className="material-symbols-outlined text-[24px]">delete</span>
               </div>
               <div className="space-y-1">
-                <h3 className="font-headline font-bold text-base text-on-surface">
+                <h3 id="delete-dialog-title" className="font-headline font-bold text-base text-on-surface">
                   Xác nhận xóa món ăn?
                 </h3>
                 <p className="text-xs text-on-surface-variant leading-relaxed">
                   Bạn có chắc chắn muốn xóa món <strong className="text-on-surface">"{dishToDelete.name}"</strong>?
                 </p>
-                <p className="text-[11px] text-tertiary bg-tertiary-soft p-2 rounded-xl mt-2">
+                <p className="text-[11px] text-tertiary bg-tertiary-soft p-2.5 rounded-xl mt-2 leading-relaxed">
                   Lưu ý: Nếu món đã từng có trong lịch sử đơn hàng, hệ thống sẽ tự động chuyển sang lưu trữ và ngừng bán để bảo vệ sổ sách kế toán.
                 </p>
               </div>
@@ -556,7 +561,7 @@ export const MenuManagementView: React.FC = () => {
                 type="button"
                 disabled={Boolean(processingDishId)}
                 onClick={() => setDishToDelete(null)}
-                className="px-4 py-2 rounded-xl bg-surface-container hover:bg-surface-container-high text-on-surface text-xs font-bold transition-colors disabled:opacity-50"
+                className="px-4 py-2.5 rounded-xl bg-surface-container hover:bg-surface-container-high text-on-surface text-xs font-bold transition-colors disabled:opacity-50 min-h-[38px]"
               >
                 Hủy bỏ
               </button>
@@ -564,7 +569,7 @@ export const MenuManagementView: React.FC = () => {
                 type="button"
                 disabled={Boolean(processingDishId)}
                 onClick={handleConfirmDelete}
-                className="px-4 py-2 rounded-xl bg-error hover:bg-error/90 text-on-error text-xs font-bold shadow-xs transition-colors disabled:opacity-50 flex items-center gap-1.5"
+                className="px-4 py-2.5 rounded-xl bg-error hover:bg-error/90 text-on-error text-xs font-bold shadow-xs transition-colors disabled:opacity-50 flex items-center gap-1.5 min-h-[38px]"
               >
                 {processingDishId && (
                   <span className="w-3.5 h-3.5 rounded-full border-2 border-on-error border-t-transparent animate-spin" />
