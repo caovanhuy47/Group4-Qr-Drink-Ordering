@@ -44,6 +44,87 @@ export const dishesApi = {
     return res.json();
   },
 
+  async createCategory(
+    data: { name: string; icon?: string; order?: number; id?: string },
+    staffId?: string,
+  ): Promise<Category> {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (staffId) headers['x-staff-id'] = staffId;
+
+    const res = await fetch(`${API_BASE_URL}/api/dishes/categories`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(data),
+    });
+
+    if (!res.ok) {
+      let errMsg = `Lỗi thêm danh mục (${res.status})`;
+      try {
+        const errJson = await res.json();
+        if (errJson && errJson.message) {
+          errMsg = Array.isArray(errJson.message) ? errJson.message.join(', ') : errJson.message;
+        }
+      } catch {}
+      throw new Error(errMsg);
+    }
+
+    return res.json();
+  },
+
+  async updateCategory(
+    id: string,
+    data: { name?: string; icon?: string; order?: number },
+    staffId?: string,
+  ): Promise<Category> {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (staffId) headers['x-staff-id'] = staffId;
+
+    const res = await fetch(`${API_BASE_URL}/api/dishes/categories/${id}`, {
+      method: 'PUT',
+      headers,
+      body: JSON.stringify(data),
+    });
+
+    if (!res.ok) {
+      let errMsg = `Lỗi cập nhật danh mục (${res.status})`;
+      try {
+        const errJson = await res.json();
+        if (errJson && errJson.message) {
+          errMsg = Array.isArray(errJson.message) ? errJson.message.join(', ') : errJson.message;
+        }
+      } catch {}
+      throw new Error(errMsg);
+    }
+
+    return res.json();
+  },
+
+  async deleteCategory(
+    id: string,
+    staffId?: string,
+  ): Promise<{ success: boolean; message: string }> {
+    const headers: Record<string, string> = {};
+    if (staffId) headers['x-staff-id'] = staffId;
+
+    const res = await fetch(`${API_BASE_URL}/api/dishes/categories/${id}`, {
+      method: 'DELETE',
+      headers,
+    });
+
+    if (!res.ok) {
+      let errMsg = `Lỗi xóa danh mục (${res.status})`;
+      try {
+        const errJson = await res.json();
+        if (errJson && errJson.message) {
+          errMsg = Array.isArray(errJson.message) ? errJson.message.join(', ') : errJson.message;
+        }
+      } catch {}
+      throw new Error(errMsg);
+    }
+
+    return res.json();
+  },
+
   async fetchDishDetail(id: string): Promise<Dish> {
     const res = await fetch(`${API_BASE_URL}/api/dishes/${id}`);
     if (!res.ok) {

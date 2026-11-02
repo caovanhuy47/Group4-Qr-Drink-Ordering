@@ -74,8 +74,10 @@ export interface RestaurantContextType {
   deleteDish: (dishId: string) => Promise<boolean>;
 
   categories: Category[];
-  addCategory: (name: string, icon: string) => void;
-  deleteCategory: (catId: string) => void;
+  addCategory: (name: string, icon: string, order?: number) => Promise<{ success: boolean; message: string }>;
+  updateCategory: (id: string, name: string, icon: string, order?: number) => Promise<{ success: boolean; message: string }>;
+  deleteCategory: (catId: string) => Promise<{ success: boolean; message: string }>;
+  refreshCategories: () => Promise<void>;
 
   banners: Banner[];
   toggleBannerActive: (bannerId: string) => void;

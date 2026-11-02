@@ -33,6 +33,7 @@ export interface Category {
   name: string;
   icon: string;
   count: number;
+  order?: number;
 }
 
 export interface Topping {

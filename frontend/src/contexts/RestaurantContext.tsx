@@ -800,18 +800,58 @@ export const RestaurantProvider: React.FC<{ children: ReactNode }> = ({ children
     }
   };
 
-  const addCategory = (name: string, icon: string) => {
-    const newCat: Category = {
-      id: `cat-${Date.now()}`,
-      name,
-      icon: icon || 'restaurant',
-      count: 0,
-    };
-    setCategories((prev) => [...prev, newCat]);
+  const refreshCategories = useCallback(async () => {
+    try {
+      const liveCategories = await dishesApi.fetchCategories();
+      setCategories(liveCategories);
+    } catch (err) {
+      console.warn('Could not refresh categories:', err);
+    }
+  }, []);
+
+  const addCategory = async (name: string, icon: string, order?: number): Promise<{ success: boolean; message: string }> => {
+    try {
+      const staffId = currentUser?.id || 'staff-1';
+      const created = await dishesApi.createCategory({ name, icon, order }, staffId);
+      setCategories((prev) => [...prev, created]);
+      await refreshDishes();
+      showToast(`Đã thêm danh mục "${created.name}" vào thực đơn`, 'success');
+      return { success: true, message: `Thêm danh mục "${created.name}" thành công` };
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Không thể tạo danh mục';
+      showToast(msg, 'error');
+      throw new Error(msg);
+    }
   };
 
-  const deleteCategory = (catId: string) => {
-    setCategories((prev) => prev.filter((c) => c.id !== catId));
+  const updateCategory = async (id: string, name: string, icon: string, order?: number): Promise<{ success: boolean; message: string }> => {
+    try {
+      const staffId = currentUser?.id || 'staff-1';
+      const updated = await dishesApi.updateCategory(id, { name, icon, order }, staffId);
+      setCategories((prev) => prev.map((c) => (c.id === id ? { ...c, ...updated } : c)));
+      await refreshDishes();
+      showToast(`Đã cập nhật danh mục "${updated.name}"`, 'success');
+      return { success: true, message: `Cập nhật danh mục "${updated.name}" thành công` };
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Không thể cập nhật danh mục';
+      showToast(msg, 'error');
+      throw new Error(msg);
+    }
+  };
+
+  const deleteCategory = async (catId: string): Promise<{ success: boolean; message: string }> => {
+    try {
+      const staffId = currentUser?.id || 'staff-1';
+      const res = await dishesApi.deleteCategory(catId, staffId);
+      setCategories((prev) => prev.filter((c) => c.id !== catId));
+      await refreshDishes();
+      showToast(res.message, 'success');
+      return { success: true, message: res.message };
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Không thể xóa danh mục';
+      showToast(msg, 'error');
+      throw new Error(msg);
+    }
   };
 
   const toggleBannerActive = (bannerId: string) => {
@@ -884,7 +924,9 @@ export const RestaurantProvider: React.FC<{ children: ReactNode }> = ({ children
         deleteDish,
         categories,
         addCategory,
+        updateCategory,
         deleteCategory,
+        refreshCategories,
         banners,
         toggleBannerActive,
         staffList,
