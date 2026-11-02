@@ -430,7 +430,7 @@ export const RestaurantProvider: React.FC<{ children: ReactNode }> = ({ children
   const [selectedTableForDetail, setSelectedTableForDetail] = useState<DiningTable | null>(null);
   const [isTableQrConfigModalOpen, setIsTableQrConfigModalOpen] = useState<boolean>(false);
 
-  const markTableServedAndPaid = (tableId: string): { success: boolean; message: string } => {
+  const markTableServedAndPaid = async (tableId: string): Promise<{ success: boolean; message: string }> => {
     // Check staff permission
     if (currentUser && currentUser.canCollectMoney === false) {
       showToast('Tài khoản của bạn không có quyền xác nhận thu tiền tại bàn.', 'error');
@@ -442,57 +442,67 @@ export const RestaurantProvider: React.FC<{ children: ReactNode }> = ({ children
       return { success: false, message: 'Bàn không tồn tại hoặc chưa có đơn gọi món' };
     }
 
+    const staffId = currentUser?.id || 'staff-1';
     const nowTime = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
-    const staffName = currentUser ? `${currentUser.name} (${currentUser.roleName})` : 'Quản lý quầy';
 
-    const updatedSession: TableSession = {
-      ...targetTable.currentSession,
-      waitingMinutes: 0,
-      confirmedAt: nowTime,
-      confirmedBy: staffName,
-      confirmedAmount: targetTable.currentSession.totalAmount,
-    };
+    // Persist real payment record into backend MySQL first to ensure consistency!
+    try {
+      const paymentRes = await reportsApi.recordPayment({
+        sessionId: targetTable.currentSession.sessionId,
+        tableNumber: targetTable.number,
+        area: targetTable.area,
+        firstOrderAt: new Date().toISOString(),
+        confirmedAt: new Date().toISOString(),
+        staffId,
+        totalQuantity: targetTable.currentSession.totalQuantity,
+        totalAmount: targetTable.currentSession.totalAmount,
+        items: targetTable.currentSession.items.map((i) => ({
+          itemId: i.itemId,
+          dishId: i.dishId,
+          name: i.name,
+          sizeName: i.selectedSize.name,
+          toppings: i.selectedToppings.map((t) => t.name),
+          notes: i.notes,
+          quantity: i.quantity,
+          unitPrice: i.unitPrice,
+          totalPrice: i.totalPrice,
+        })),
+      });
 
-    const updatedTable: DiningTable = {
-      ...targetTable,
-      status: 'seated',
-      currentSession: updatedSession,
-    };
+      const confirmedByStaff = paymentRes?.record && typeof paymentRes.record === 'object' && 'confirmedBy' in paymentRes.record
+        ? (paymentRes.record as { confirmedBy: string }).confirmedBy
+        : (currentUser ? `${currentUser.name} (${currentUser.roleName})` : 'Quản lý quầy');
 
-    setTables((prev) => prev.map((t) => (t.id === tableId ? updatedTable : t)));
+      const updatedSession: TableSession = {
+        ...targetTable.currentSession,
+        waitingMinutes: 0,
+        confirmedAt: nowTime,
+        confirmedBy: confirmedByStaff,
+        confirmedAmount: targetTable.currentSession.totalAmount,
+      };
 
-    if (selectedTableForDetail && selectedTableForDetail.id === tableId) {
-      setSelectedTableForDetail(updatedTable);
+      const updatedTable: DiningTable = {
+        ...targetTable,
+        status: 'seated',
+        currentSession: updatedSession,
+      };
+
+      setTables((prev) => prev.map((t) => (t.id === tableId ? updatedTable : t)));
+
+      if (selectedTableForDetail && selectedTableForDetail.id === tableId) {
+        setSelectedTableForDetail(updatedTable);
+      }
+
+      showToast(
+        `Đã phục vụ & thu đủ ${updatedSession.totalAmount.toLocaleString('vi-VN')}đ tại ${targetTable.number}! Bàn chuyển sang trạng thái "Đang ngồi".`,
+        'success'
+      );
+      return { success: true, message: 'Xác nhận thành công' };
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : 'Lỗi hệ thống khi lưu lịch sử thu tiền';
+      showToast(`Không thể xác nhận thu tiền: ${errMsg}`, 'error');
+      return { success: false, message: errMsg };
     }
-
-    // Persist real payment record into backend MySQL
-    reportsApi.recordPayment({
-      sessionId: updatedSession.sessionId,
-      tableNumber: targetTable.number,
-      area: targetTable.area,
-      firstOrderAt: new Date().toISOString(),
-      confirmedAt: new Date().toISOString(),
-      confirmedBy: staffName,
-      totalQuantity: updatedSession.totalQuantity,
-      totalAmount: updatedSession.totalAmount,
-      items: updatedSession.items.map((i) => ({
-        itemId: i.itemId,
-        dishId: i.dishId,
-        name: i.name,
-        sizeName: i.selectedSize.name,
-        toppings: i.selectedToppings.map((t) => t.name),
-        notes: i.notes,
-        quantity: i.quantity,
-        unitPrice: i.unitPrice,
-        totalPrice: i.totalPrice,
-      })),
-    });
-
-    showToast(
-      `Đã phục vụ & thu đủ ${updatedSession.totalAmount.toLocaleString('vi-VN')}đ tại ${targetTable.number}! Bàn chuyển sang trạng thái "Đang ngồi".`,
-      'success'
-    );
-    return { success: true, message: 'Xác nhận thành công' };
   };
 
   const markTableEmpty = (tableId: string): { success: boolean; message: string } => {

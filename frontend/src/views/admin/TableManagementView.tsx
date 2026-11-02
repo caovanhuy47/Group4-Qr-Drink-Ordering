@@ -66,13 +66,14 @@ export const TableManagementView: React.FC = () => {
       });
   }, [tables, searchTerm, statusFilter]);
 
-  const handleServeAndPay = (table: DiningTable) => {
+  const handleServeAndPay = async (table: DiningTable) => {
     if (!canCollect || processingTableId) return;
     setProcessingTableId(table.id);
-    setTimeout(() => {
-      markTableServedAndPaid(table.id);
+    try {
+      await markTableServedAndPaid(table.id);
+    } finally {
       setProcessingTableId(null);
-    }, 350);
+    }
   };
 
   const handleMarkEmpty = (table: DiningTable) => {

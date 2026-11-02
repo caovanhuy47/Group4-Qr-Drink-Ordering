@@ -25,11 +25,11 @@ export const TableDetailDrawer: React.FC<TableDetailDrawerProps> = ({ table, onC
   const handleServeAndPay = async () => {
     if (!canCollect || isProcessing) return;
     setIsProcessing(true);
-    // Simulate brief network latency for feedback stability
-    setTimeout(() => {
-      markTableServedAndPaid(table.id);
+    try {
+      await markTableServedAndPaid(table.id);
+    } finally {
       setIsProcessing(false);
-    }, 350);
+    }
   };
 
   const handleMarkEmpty = () => {

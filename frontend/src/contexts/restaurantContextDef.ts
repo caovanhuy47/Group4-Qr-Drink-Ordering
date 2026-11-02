@@ -90,7 +90,7 @@ export interface RestaurantContextType {
   setSelectedTableForDetail: (table: DiningTable | null) => void;
   isTableQrConfigModalOpen: boolean;
   setIsTableQrConfigModalOpen: (open: boolean) => void;
-  markTableServedAndPaid: (tableId: string) => { success: boolean; message: string };
+  markTableServedAndPaid: (tableId: string) => Promise<{ success: boolean; message: string }>;
   markTableEmpty: (tableId: string) => { success: boolean; message: string };
   addNewTable: (number: string, area: string) => void;
   refreshTables: () => void;

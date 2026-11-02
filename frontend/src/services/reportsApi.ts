@@ -78,6 +78,10 @@ export interface PaymentHistoryResponse {
     totalRevenue: number;
     totalItems: number;
   };
+  filterOptions?: {
+    tables: string[];
+    staffMembers: string[];
+  };
   data: PaymentHistoryRecord[];
   pagination: {
     page: number;
@@ -100,15 +104,18 @@ export const reportsApi = {
     return res.json();
   },
 
-  async fetchPaymentHistory(params: {
-    page?: number;
-    limit?: number;
-    search?: string;
-    tableNumber?: string;
-    confirmedBy?: string;
-    startDate?: string;
-    endDate?: string;
-  }): Promise<PaymentHistoryResponse> {
+  async fetchPaymentHistory(
+    params: {
+      page?: number;
+      limit?: number;
+      search?: string;
+      tableNumber?: string;
+      confirmedBy?: string;
+      startDate?: string;
+      endDate?: string;
+    },
+    signal?: AbortSignal,
+  ): Promise<PaymentHistoryResponse> {
     const q = new URLSearchParams();
     if (params.page) q.set('page', String(params.page));
     if (params.limit) q.set('limit', String(params.limit));
@@ -118,9 +125,16 @@ export const reportsApi = {
     if (params.startDate) q.set('startDate', params.startDate);
     if (params.endDate) q.set('endDate', params.endDate);
 
-    const res = await fetch(`${API_BASE_URL}/api/reports/payment-history?${q.toString()}`);
+    const res = await fetch(`${API_BASE_URL}/api/reports/payment-history?${q.toString()}`, { signal });
     if (!res.ok) {
-      throw new Error(`Lỗi máy chủ: HTTP ${res.status}`);
+      let errMsg = `Lỗi máy chủ: HTTP ${res.status}`;
+      try {
+        const errJson = await res.json();
+        if (errJson && errJson.message) {
+          errMsg = Array.isArray(errJson.message) ? errJson.message.join(', ') : errJson.message;
+        }
+      } catch {}
+      throw new Error(errMsg);
     }
     return res.json();
   },
@@ -128,7 +142,14 @@ export const reportsApi = {
   async fetchPaymentDetail(idOrSessionId: string): Promise<PaymentHistoryRecord> {
     const res = await fetch(`${API_BASE_URL}/api/reports/payment-history/${idOrSessionId}`);
     if (!res.ok) {
-      throw new Error(`Lỗi máy chủ: HTTP ${res.status}`);
+      let errMsg = `Lỗi máy chủ: HTTP ${res.status}`;
+      try {
+        const errJson = await res.json();
+        if (errJson && errJson.message) {
+          errMsg = Array.isArray(errJson.message) ? errJson.message.join(', ') : errJson.message;
+        }
+      } catch {}
+      throw new Error(errMsg);
     }
     return res.json();
   },
@@ -138,21 +159,35 @@ export const reportsApi = {
     tableNumber: string;
     area?: string;
     firstOrderAt: string;
-    confirmedAt: string;
-    confirmedBy: string;
+    confirmedAt?: string;
+    confirmedBy?: string;
+    staffId?: string;
     totalQuantity: number;
     totalAmount: number;
     items: unknown[];
-  }): Promise<void> {
-    try {
-      await fetch(`${API_BASE_URL}/api/reports/payments`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      });
-    } catch (e) {
-      console.warn('Could not record payment to backend:', e);
+  }): Promise<{ success: boolean; message: string; record?: unknown }> {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (data.staffId) {
+      headers['x-staff-id'] = data.staffId;
     }
+
+    const res = await fetch(`${API_BASE_URL}/api/reports/payments`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(data),
+    });
+
+    if (!res.ok) {
+      let errMsg = `Lỗi máy chủ (${res.status})`;
+      try {
+        const errJson = await res.json();
+        if (errJson && errJson.message) {
+          errMsg = Array.isArray(errJson.message) ? errJson.message.join(', ') : errJson.message;
+        }
+      } catch {}
+      throw new Error(errMsg);
+    }
+
+    return res.json();
   },
 };
-
