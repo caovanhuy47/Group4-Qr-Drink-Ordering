@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useRestaurant } from '../../contexts/useRestaurant';
+import { TableStatusBadge } from './TableStatusBadge';
 import type { DiningTable } from '../../types/restaurant';
 
 interface TableDetailDrawerProps {
@@ -52,10 +53,10 @@ export const TableDetailDrawer: React.FC<TableDetailDrawerProps> = ({ table, onC
             <div className="flex items-start justify-between">
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="font-headline font-black text-2xl text-on-surface tracking-tight">
-                    {table.number}
-                  </span>
-                  <span className="text-xs px-2 py-0.5 rounded-full bg-surface-container border border-border text-on-surface-variant font-medium">
+                  <h3 className="font-headline font-black text-2xl text-on-surface tracking-tight whitespace-nowrap">
+                    Chi tiết {table.number}
+                  </h3>
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-surface-container border border-border text-on-surface-variant font-medium shrink-0">
                     {table.area}
                   </span>
                 </div>
@@ -75,8 +76,8 @@ export const TableDetailDrawer: React.FC<TableDetailDrawerProps> = ({ table, onC
                     )}
                   </div>
                 ) : (
-                  <p className="text-xs text-tertiary font-medium mt-1 flex items-center gap-1">
-                    <span className="material-symbols-outlined text-[14px]">check_circle</span>
+                  <p className="text-xs text-on-surface-variant font-medium mt-1 flex items-center gap-1.5">
+                    <span className="material-symbols-outlined text-[15px] text-on-surface-variant/70">chair_alt</span>
                     Bàn đang trống • Sẵn sàng đón khách mới
                   </p>
                 )}
@@ -95,24 +96,7 @@ export const TableDetailDrawer: React.FC<TableDetailDrawerProps> = ({ table, onC
               <span className="text-xs font-semibold text-on-surface-variant uppercase tracking-wider">
                 Trạng thái vận hành
               </span>
-              {table.status === 'ordered' && (
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-secondary-soft text-secondary-container-on font-bold text-xs border border-secondary-container">
-                  <span className="w-2 h-2 rounded-full bg-secondary animate-pulse" />
-                  Order thành công
-                </span>
-              )}
-              {table.status === 'seated' && (
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-tertiary-soft text-tertiary font-bold text-xs border border-tertiary/20">
-                  <span className="material-symbols-outlined text-[15px]">event_seat</span>
-                  Đang ngồi (Đã thu tiền)
-                </span>
-              )}
-              {table.status === 'empty' && (
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-surface-container text-on-surface-variant font-bold text-xs border border-border">
-                  <span className="material-symbols-outlined text-[15px]">event_seat</span>
-                  Trống
-                </span>
-              )}
+              <TableStatusBadge status={table.status} variant="full" />
             </div>
           </div>
 

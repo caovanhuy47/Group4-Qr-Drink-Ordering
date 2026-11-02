@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { AdminLayout } from '../../components/admin/AdminLayout';
 import { useRestaurant } from '../../contexts/useRestaurant';
 import { reportsApi, type OverviewData, type PaymentHistoryRecord } from '../../services/reportsApi';
 import { PaymentDetailDrawer } from '../../components/admin/PaymentDetailDrawer';
+import { TableStatusIcon } from '../../components/admin/TableStatusBadge';
 
 export const OverviewDashboardView: React.FC = () => {
   const { setViewRoute, setSelectedTableForDetail, tables } = useRestaurant();
@@ -70,6 +71,36 @@ export const OverviewDashboardView: React.FC = () => {
   const handleGoToHistory = () => {
     setViewRoute('admin/history');
   };
+
+  // Real-time table metrics synchronized with Table Management (RestaurantContext)
+  const totalTables = tables.length > 0 ? tables.length : (data?.tableStatusCounts.total ?? 8);
+  const emptyTablesCount = tables.length > 0
+    ? tables.filter((t) => t.status === 'empty').length
+    : (data?.tableStatusCounts.empty ?? 3);
+  const orderedTablesCount = tables.length > 0
+    ? tables.filter((t) => t.status === 'ordered').length
+    : (data?.tableStatusCounts.ordered ?? 3);
+  const seatedTablesCount = tables.length > 0
+    ? tables.filter((t) => t.status === 'seated').length
+    : (data?.tableStatusCounts.seated ?? 2);
+  const currentUsingTablesCount = orderedTablesCount + seatedTablesCount;
+
+  // Derive live waiting tables from ordered tables
+  const liveWaitingTables = useMemo(() => {
+    return tables
+      .filter((t) => t.status === 'ordered' && t.currentSession)
+      .map((t) => ({
+        tableNumber: t.number,
+        sessionId: t.currentSession!.sessionId,
+        totalQuantity: t.currentSession!.totalQuantity,
+        totalAmount: t.currentSession!.totalAmount,
+        firstOrderAt: t.currentSession!.firstOrderAt,
+        waitingMinutes: t.currentSession!.waitingMinutes,
+      }))
+      .sort((a, b) => b.waitingMinutes - a.waitingMinutes);
+  }, [tables]);
+
+  const displayWaitingTables = liveWaitingTables.length > 0 ? liveWaitingTables : (data?.longestWaitingTables || []);
 
   return (
     <AdminLayout
@@ -225,9 +256,9 @@ export const OverviewDashboardView: React.FC = () => {
             </div>
             <div className="flex items-baseline gap-1">
               <span className="font-headline font-black text-2xl lg:text-3xl text-on-surface">
-                {isLoading ? '...' : data?.currentUsingTables || 0}
+                {currentUsingTablesCount}
               </span>
-              <span className="text-xs text-on-surface-variant font-medium">/ 12 bàn</span>
+              <span className="text-xs text-on-surface-variant font-medium">/ {totalTables} bàn</span>
             </div>
             <p className="text-[11px] text-primary font-bold">
               Chuyển đến Quản lý bàn ➔
@@ -260,40 +291,40 @@ export const OverviewDashboardView: React.FC = () => {
             <div className="space-y-2">
               <div
                 onClick={() => handleGoToTables()}
-                className="flex items-center justify-between p-2.5 rounded-xl bg-tertiary-soft/40 border border-tertiary/20 cursor-pointer hover:bg-tertiary-soft"
+                className="flex items-center justify-between p-2.5 rounded-xl bg-surface-container border border-border cursor-pointer hover:bg-surface-container-high transition-colors"
               >
                 <div className="flex items-center gap-2 text-xs">
-                  <span className="material-symbols-outlined text-[16px] text-tertiary">check_circle</span>
+                  <TableStatusIcon status="empty" size="md" />
                   <span className="font-bold text-on-surface">Bàn Trống</span>
                 </div>
-                <span className="font-headline font-bold text-sm text-tertiary">
-                  {data?.tableStatusCounts.empty ?? 4} bàn
+                <span className="font-headline font-bold text-sm text-on-surface-variant">
+                  {emptyTablesCount} bàn
                 </span>
               </div>
 
               <div
                 onClick={() => handleGoToTables()}
-                className="flex items-center justify-between p-2.5 rounded-xl bg-primary-soft/50 border border-primary/20 cursor-pointer hover:bg-primary-soft"
+                className="flex items-center justify-between p-2.5 rounded-xl bg-primary-soft/50 border border-primary/20 cursor-pointer hover:bg-primary-soft transition-colors"
               >
                 <div className="flex items-center gap-2 text-xs">
-                  <span className="material-symbols-outlined text-[16px] text-primary">receipt_long</span>
+                  <TableStatusIcon status="ordered" size="md" />
                   <span className="font-bold text-primary">Order thành công</span>
                 </div>
                 <span className="font-headline font-bold text-sm text-primary">
-                  {data?.tableStatusCounts.ordered ?? 3} bàn (Cần phục vụ)
+                  {orderedTablesCount} bàn (Cần phục vụ)
                 </span>
               </div>
 
               <div
                 onClick={() => handleGoToTables()}
-                className="flex items-center justify-between p-2.5 rounded-xl bg-secondary-soft/50 border border-secondary/20 cursor-pointer hover:bg-secondary-soft"
+                className="flex items-center justify-between p-2.5 rounded-xl bg-tertiary-soft/50 border border-tertiary/20 cursor-pointer hover:bg-tertiary-soft transition-colors"
               >
                 <div className="flex items-center gap-2 text-xs">
-                  <span className="material-symbols-outlined text-[16px] text-secondary">event_seat</span>
+                  <TableStatusIcon status="seated" size="md" />
                   <span className="font-bold text-on-surface">Đang ngồi (Đã thu tiền)</span>
                 </div>
-                <span className="font-headline font-bold text-sm text-secondary">
-                  {data?.tableStatusCounts.seated ?? 5} bàn
+                <span className="font-headline font-bold text-sm text-tertiary">
+                  {seatedTablesCount} bàn
                 </span>
               </div>
             </div>
@@ -312,24 +343,31 @@ export const OverviewDashboardView: React.FC = () => {
             </div>
 
             <div className="divide-y divide-border/60">
-              {data?.longestWaitingTables.map((tbl) => (
-                <div
-                  key={tbl.sessionId}
-                  className="py-2.5 flex items-center justify-between gap-3 text-xs"
-                >
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-lg bg-primary-soft text-primary font-bold flex items-center justify-center font-headline text-xs">
-                      {tbl.tableNumber.replace('BÀN ', '')}
+              {displayWaitingTables.length === 0 ? (
+                <div className="py-8 text-center text-xs text-on-surface-variant space-y-1">
+                  <span className="material-symbols-outlined text-[26px] text-tertiary block mx-auto">task_alt</span>
+                  <p className="font-semibold text-on-surface">Không có bàn nào đang chờ phục vụ</p>
+                  <p className="text-[11px] text-on-surface-variant/70">Tất cả bàn gọi món đều đã được phục vụ và thu tiền đầy đủ.</p>
+                </div>
+              ) : (
+                displayWaitingTables.map((tbl) => (
+                  <div
+                    key={tbl.sessionId}
+                    className="py-2.5 flex items-center justify-between gap-3 text-xs"
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="w-8 h-8 rounded-lg bg-primary-soft text-primary font-bold flex items-center justify-center font-headline text-xs shrink-0">
+                        {tbl.tableNumber.replace(/BÀN\s*/i, '')}
+                      </div>
+                      <div className="min-w-0">
+                        <span className="font-bold text-on-surface block text-sm leading-tight whitespace-nowrap">
+                          {tbl.tableNumber}
+                        </span>
+                        <span className="text-[11px] text-on-surface-variant truncate block">
+                          #{tbl.sessionId} • {tbl.totalQuantity} phần gọi • Gửi lúc {tbl.firstOrderAt}
+                        </span>
+                      </div>
                     </div>
-                    <div>
-                      <span className="font-bold text-on-surface block text-sm leading-tight">
-                        {tbl.tableNumber}
-                      </span>
-                      <span className="text-[11px] text-on-surface-variant">
-                        #{tbl.sessionId} • {tbl.totalQuantity} phần gọi • Gửi lúc {tbl.firstOrderAt}
-                      </span>
-                    </div>
-                  </div>
 
                   <div className="flex items-center gap-3">
                     <div className="text-right">
@@ -350,7 +388,7 @@ export const OverviewDashboardView: React.FC = () => {
                     </button>
                   </div>
                 </div>
-              ))}
+              )))}
             </div>
           </div>
         </div>

@@ -125,27 +125,14 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children, title, subti
           </nav>
         </div>
 
-        {/* Bottom Actions: Customer Menu Switch & Logout */}
-        <div className="pt-4 border-t border-border/60 space-y-2">
-          <button
-            onClick={() => {
-              setViewRoute('lobby');
-              setMobileMenuOpen(false);
-            }}
-            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-on-surface bg-surface-container-low hover:bg-surface-container transition-colors"
-          >
-            <span className="material-symbols-outlined text-[18px] text-secondary">
-              qr_code_scanner
-            </span>
-            <span>Xem Sảnh Khách (Bàn 05)</span>
-          </button>
-
+        {/* Bottom Actions: Logout */}
+        <div className="pt-3 border-t border-border/60">
           <button
             onClick={() => {
               logout();
               setMobileMenuOpen(false);
             }}
-            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-error hover:bg-error-container/20 transition-colors"
+            className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold text-error hover:bg-error-container/20 transition-colors"
           >
             <span className="material-symbols-outlined text-[18px]">logout</span>
             <span>Đăng xuất ca trực</span>

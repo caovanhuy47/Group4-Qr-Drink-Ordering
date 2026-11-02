@@ -73,7 +73,7 @@ export const StaffLoginView: React.FC = () => {
           className="flex items-center gap-1.5 text-xs md:text-sm font-semibold text-primary hover:underline bg-surface-container-lowest px-3.5 py-1.5 rounded-full border border-border shadow-xs"
         >
           <span className="material-symbols-outlined text-[18px]">arrow_back</span>
-          <span>Về Sảnh Khách (Bàn 05)</span>
+          <span>Về Sảnh Khách</span>
         </button>
 
         <span className="text-xs text-on-surface-variant font-medium">

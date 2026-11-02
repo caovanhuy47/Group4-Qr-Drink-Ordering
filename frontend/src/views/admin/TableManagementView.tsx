@@ -3,6 +3,7 @@ import { AdminLayout } from '../../components/admin/AdminLayout';
 import { useRestaurant } from '../../contexts/useRestaurant';
 import { TableDetailDrawer } from '../../components/admin/TableDetailDrawer';
 import { TableQrConfigModal } from '../../components/admin/TableQrConfigModal';
+import { TableStatusBadge, TableStatusIcon } from '../../components/admin/TableStatusBadge';
 import type { DiningTable, TableOperationalStatus } from '../../types/restaurant';
 
 export const TableManagementView: React.FC = () => {
@@ -173,16 +174,16 @@ export const TableManagementView: React.FC = () => {
             onClick={() => setStatusFilter('empty')}
             className={`p-3.5 md:p-4 rounded-2xl border text-left transition-all ${
               statusFilter === 'empty'
-                ? 'bg-surface-container-lowest border-tertiary shadow-warm-sm ring-2 ring-tertiary/20'
+                ? 'bg-surface-container-lowest border-on-surface-variant shadow-warm-sm ring-2 ring-border'
                 : 'bg-surface-container-lowest border-border hover:bg-surface-container-low'
             }`}
           >
             <div className="flex items-center justify-between text-on-surface-variant mb-1">
               <span className="text-xs font-bold uppercase tracking-wider">Bàn trống</span>
-              <span className="material-symbols-outlined text-[20px] text-tertiary">check_circle</span>
+              <TableStatusIcon status="empty" size="md" />
             </div>
             <div className="flex items-baseline gap-2">
-              <span className="font-headline font-black text-2xl md:text-3xl text-tertiary">
+              <span className="font-headline font-black text-2xl md:text-3xl text-on-surface">
                 {counts.empty}
               </span>
               <span className="text-xs text-on-surface-variant">sẵn sàng đón khách</span>
@@ -205,9 +206,7 @@ export const TableManagementView: React.FC = () => {
               <span className="text-xs font-bold uppercase tracking-wider text-primary">
                 Order thành công
               </span>
-              <span className="material-symbols-outlined text-[20px] text-primary">
-                receipt_long
-              </span>
+              <TableStatusIcon status="ordered" size="md" />
             </div>
             <div className="flex items-baseline gap-2">
               <span className="font-headline font-black text-2xl md:text-3xl text-primary">
@@ -222,18 +221,16 @@ export const TableManagementView: React.FC = () => {
             onClick={() => setStatusFilter('seated')}
             className={`p-3.5 md:p-4 rounded-2xl border text-left transition-all ${
               statusFilter === 'seated'
-                ? 'bg-surface-container-lowest border-secondary shadow-warm-sm ring-2 ring-secondary/20'
+                ? 'bg-surface-container-lowest border-tertiary shadow-warm-sm ring-2 ring-tertiary/20'
                 : 'bg-surface-container-lowest border-border hover:bg-surface-container-low'
             }`}
           >
             <div className="flex items-center justify-between text-on-surface-variant mb-1">
-              <span className="text-xs font-bold uppercase tracking-wider">Bàn Đang ngồi</span>
-              <span className="material-symbols-outlined text-[20px] text-secondary">
-                event_seat
-              </span>
+              <span className="text-xs font-bold uppercase tracking-wider text-tertiary">Bàn Đang ngồi</span>
+              <TableStatusIcon status="seated" size="md" />
             </div>
             <div className="flex items-baseline gap-2">
-              <span className="font-headline font-black text-2xl md:text-3xl text-secondary">
+              <span className="font-headline font-black text-2xl md:text-3xl text-tertiary">
                 {counts.seated}
               </span>
               <span className="text-xs text-on-surface-variant">đang thưởng thức</span>
@@ -309,48 +306,29 @@ export const TableManagementView: React.FC = () => {
                       : 'bg-surface-container-lowest border-border/70 hover:border-border'
                   }`}
                 >
-                  {/* Top: Table Number & Status Pill */}
+                  {/* Top: Table Number & Status Badge */}
                   <div className="space-y-2">
                     <div className="flex items-start justify-between gap-2">
-                      <div>
-                        {/* Table Number prominently displayed */}
-                        <h4 className="font-headline font-black text-2xl md:text-3xl text-on-surface tracking-tight leading-none">
+                      <div className="min-w-0">
+                        {/* Table Number displayed without breaking lines */}
+                        <h4 className="font-headline font-black text-2xl md:text-3xl text-on-surface tracking-tight leading-none whitespace-nowrap">
                           {table.number}
                         </h4>
-                        <span className="text-[11px] text-on-surface-variant font-medium mt-1 block">
+                        <span className="text-[11px] text-on-surface-variant font-medium mt-1 block truncate">
                           {table.area}
                         </span>
                       </div>
 
-                      {/* Text & Icon Status Badges */}
-                      {table.status === 'empty' && (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-surface-container text-on-surface-variant text-[11px] font-bold border border-border shrink-0">
-                          <span className="material-symbols-outlined text-[14px]">event_seat</span>
-                          <span>Trống</span>
-                        </span>
-                      )}
-
-                      {table.status === 'ordered' && (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-primary-soft text-primary text-[11px] font-bold border border-primary/20 shrink-0">
-                          <span className="material-symbols-outlined text-[14px]">receipt_long</span>
-                          <span>Order thành công</span>
-                        </span>
-                      )}
-
-                      {table.status === 'seated' && (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-tertiary-soft text-tertiary text-[11px] font-bold border border-tertiary/20 shrink-0">
-                          <span className="material-symbols-outlined text-[14px]">verified</span>
-                          <span>Đang ngồi</span>
-                        </span>
-                      )}
+                      {/* Compact Status Icon Badge (Receipt with check for Ordered, Tooltip & accessible name) */}
+                      <TableStatusBadge status={table.status} variant="compact" />
                     </div>
 
                     {/* Middle: Operational State Info */}
                     <div className="py-2.5 border-t border-border/50">
                       {table.status === 'empty' && (
                         <div className="py-3 text-center space-y-1">
-                          <span className="material-symbols-outlined text-[28px] text-tertiary/60 block">
-                            chair
+                          <span className="material-symbols-outlined text-[28px] text-on-surface-variant/40 block">
+                            chair_alt
                           </span>
                           <p className="text-xs text-on-surface-variant leading-relaxed">
                             Sẵn sàng nhận lượt gọi món mới
@@ -389,8 +367,8 @@ export const TableManagementView: React.FC = () => {
                       {table.status === 'seated' && session && (
                         <div className="space-y-1 text-xs">
                           <div className="flex items-center justify-between font-semibold text-tertiary">
-                            <span className="flex items-center gap-1">
-                              <span className="material-symbols-outlined text-[14px]">check</span>
+                            <span className="flex items-center gap-1.5">
+                              <span className="material-symbols-outlined text-[16px]">groups</span>
                               Đã phục vụ & thu tiền
                             </span>
                             <span className="font-headline font-bold text-sm text-on-surface">
