@@ -1,92 +1,124 @@
 import React from 'react';
-import { useApp } from './contexts/useApp';
+import { RestaurantProvider } from './contexts/RestaurantContext';
+import { useRestaurant } from './contexts/useRestaurant';
+import { DishDetailModal } from './components/customer/DishDetailModal';
+import { CustomerAuthModal } from './components/customer/CustomerAuthModal';
 import { ToastContainer } from './components/common/ToastContainer';
 
-export const App: React.FC = () => {
-  const { serverHealth } = useApp();
+// Customer Views
+import { FoodLobbyView } from './views/customer/FoodLobbyView';
+import { CartView } from './views/customer/CartView';
+import { OrderConfirmationView } from './views/customer/OrderConfirmationView';
+import { OrderTrackingView } from './views/customer/OrderTrackingView';
+
+// Staff & Admin Views
+import { StaffLoginView } from './views/admin/StaffLoginView';
+import { OverviewDashboardView } from './views/admin/OverviewDashboardView';
+import { TableManagementView } from './views/admin/TableManagementView';
+import { PaymentHistoryView } from './views/admin/PaymentHistoryView';
+import { MenuManagementView } from './views/admin/MenuManagementView';
+import { CategoryManagementView } from './views/admin/CategoryManagementView';
+import { BannerManagementView } from './views/admin/BannerManagementView';
+import { StaffRbacView } from './views/admin/StaffRbacView';
+import { StaffProfileView } from './views/admin/StaffProfileView';
+
+const InAppToast: React.FC = () => {
+  const { toast, clearToast } = useRestaurant();
+  if (!toast) return null;
 
   return (
-    <div
-      className="app-container"
-      style={{
-        minHeight: '100vh',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '24px',
-      }}
-    >
-      <main
-        id="main-content"
-        className="glass-panel animate-fade-in"
-        style={{
-          padding: '48px 40px',
-          textAlign: 'center',
-          maxWidth: '640px',
-          width: '100%',
-        }}
+    <div className="fixed top-4 right-4 z-50 max-w-sm w-full animate-slide-up pointer-events-auto px-4 md:px-0">
+      <div
+        className={`p-3.5 rounded-2xl shadow-warm-lg flex items-center justify-between gap-3 border ${
+          toast.type === 'success'
+            ? 'bg-tertiary-soft border-tertiary/30 text-tertiary'
+            : toast.type === 'error'
+            ? 'bg-error-container/40 border-error/30 text-error'
+            : 'bg-surface-container-lowest border-border text-on-surface shadow-warm-md'
+        }`}
       >
-        <h1
-          id="main-title"
-          style={{
-            fontSize: '2rem',
-            fontWeight: 800,
-            marginBottom: '16px',
-            background: 'linear-gradient(135deg, #6366f1 0%, #06b6d4 100%)',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
-            lineHeight: 1.3,
-          }}
-        >
-          Nhóm 4 — Website đặt món bằng mã QR
-        </h1>
-        <p
-          id="main-subtitle"
-          style={{
-            fontSize: '1.2rem',
-            color: 'var(--text-muted)',
-            marginBottom: '24px',
-          }}
-        >
-          Khung dự án đã sẵn sàng.
-        </p>
-
-        <div
-          id="backend-status-pill"
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '8px',
-            padding: '6px 16px',
-            borderRadius: 'var(--radius-full)',
-            background: 'rgba(255, 255, 255, 0.05)',
-            border: '1px solid var(--border-subtle)',
-            fontSize: '0.85rem',
-          }}
-        >
-          <span
-            style={{
-              width: '8px',
-              height: '8px',
-              borderRadius: '50%',
-              backgroundColor:
-                serverHealth.status === 'online'
-                  ? '#10b981'
-                  : serverHealth.status === 'checking'
-                  ? '#f59e0b'
-                  : '#f43f5e',
-            }}
-          />
-          <span style={{ color: 'var(--text-muted)' }}>
-            Backend: {serverHealth.status === 'online' ? 'Kết nối bình thường' : serverHealth.status === 'checking' ? 'Đang kiểm tra...' : 'Không có kết nối'}
+        <div className="flex items-center gap-2.5 min-w-0">
+          <span className="material-symbols-outlined text-[20px] shrink-0">
+            {toast.type === 'success' ? 'check_circle' : toast.type === 'error' ? 'error' : 'info'}
           </span>
+          <span className="text-xs md:text-sm font-semibold truncate">{toast.text}</span>
         </div>
-      </main>
+        <button
+          onClick={clearToast}
+          className="p-1 rounded-full hover:bg-black/5 text-on-surface-variant shrink-0"
+        >
+          <span className="material-symbols-outlined text-[16px]">close</span>
+        </button>
+      </div>
+    </div>
+  );
+};
 
-      {/* Global Toast Container */}
+const MainContent: React.FC = () => {
+  const { viewRoute, selectedDishForDetail } = useRestaurant();
+
+  const renderActiveView = () => {
+    switch (viewRoute) {
+      case 'lobby':
+        return <FoodLobbyView />;
+      case 'cart':
+        return <CartView />;
+      case 'order-confirm':
+        return <OrderConfirmationView />;
+      case 'order-tracking':
+        return <OrderTrackingView />;
+      case 'login':
+        return <StaffLoginView />;
+      case 'admin/overview':
+        return <OverviewDashboardView />;
+      case 'admin/tables':
+        return <TableManagementView />;
+      case 'admin/history':
+        return <PaymentHistoryView />;
+      case 'admin/menu':
+        return <MenuManagementView />;
+      case 'admin/categories':
+        return <CategoryManagementView />;
+      case 'admin/banners':
+        return <BannerManagementView />;
+      case 'admin/staff':
+        return <StaffRbacView />;
+      case 'admin/profile':
+        return <StaffProfileView />;
+      default:
+        return <FoodLobbyView />;
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-background text-on-surface flex flex-col w-full selection:bg-primary-soft selection:text-primary">
+      {/* Active Route Content: Natural Responsive Layout */}
+      <div className="w-full flex-1">
+        {renderActiveView()}
+      </div>
+
+      {/* Dish Detail BottomSheet on Mobile, Popup on Desktop */}
+      {selectedDishForDetail && (
+        <DishDetailModal key={selectedDishForDetail.id} />
+      )}
+
+      {/* Customer Account & Membership Modal */}
+      <CustomerAuthModal />
+
+      {/* Global In-App Notification Toast */}
+      <InAppToast />
+
+      {/* Legacy/App Toast Container */}
       <ToastContainer />
     </div>
+  );
+};
+
+export const App: React.FC = () => {
+  return (
+    <RestaurantProvider>
+      <MainContent />
+    </RestaurantProvider>
   );
 };
 

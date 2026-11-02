@@ -2,14 +2,109 @@
 <html lang="vi">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Nhóm 4 — Website đặt món bằng mã QR và quản lý vận hành quán nước vỉa hè" />
-    <title>Nhóm 4 — Website đặt món bằng mã QR</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="description" content="Huy CV — Website đặt món bằng mã QR và quản lý vận hành quán nước vỉa hè" />
+    <title>Huy CV • Website Đặt Món Bằng Mã QR & Quản Lý Quán</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>☕</text></svg>" />
+
+    <!-- Google Fonts: Epilogue & Be Vietnam Pro & Material Symbols Outlined -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Epilogue:wght@600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" />
+
+    <!-- Tailwind CSS with Design System Tokens -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "primary": "#971f0e",
+              "primary-container": "#b93824",
+              "primary-fixed": "#ffdad4",
+              "primary-fixed-dim": "#ffb4a6",
+              "on-primary": "#ffffff",
+              "on-primary-container": "#ffddd7",
+              "on-primary-fixed": "#3f0300",
+              "on-primary-fixed-variant": "#8c1707",
+              "inverse-primary": "#ffb4a6",
+
+              "secondary": "#7d5800",
+              "secondary-container": "#fdbf47",
+              "secondary-fixed": "#ffdea9",
+              "secondary-fixed-dim": "#fabc45",
+              "on-secondary": "#ffffff",
+              "on-secondary-container": "#704e00",
+              "on-secondary-fixed": "#271900",
+              "on-secondary-fixed-variant": "#5f4100",
+
+              "tertiary": "#2c563b",
+              "tertiary-container": "#446f52",
+              "tertiary-fixed": "#beeeca",
+              "tertiary-fixed-dim": "#a2d2af",
+              "on-tertiary": "#ffffff",
+              "on-tertiary-container": "#c0f0cb",
+              "on-tertiary-fixed": "#00210f",
+              "on-tertiary-fixed-variant": "#244f34",
+
+              "background": "#fff8f5",
+              "surface": "#fff8f5",
+              "surface-dim": "#efd5c1",
+              "surface-bright": "#fff8f5",
+              "surface-container-lowest": "#ffffff",
+              "surface-container-low": "#fff1e8",
+              "surface-container": "#ffeadb",
+              "surface-container-high": "#fee3cf",
+              "surface-container-highest": "#f8dec9",
+              "surface-variant": "#f8dec9",
+
+              "on-surface": "#26190c",
+              "on-surface-variant": "#59413d",
+              "inverse-surface": "#3d2d1f",
+              "inverse-on-surface": "#ffeee1",
+
+              "outline": "#8d716b",
+              "outline-variant": "#e1bfb9",
+              "surface-tint": "#ae301d",
+
+              "error": "#ba1a1a",
+              "error-container": "#ffdad6",
+              "on-error": "#ffffff",
+              "on-error-container": "#93000a",
+            },
+            borderRadius: {
+              DEFAULT: "0.25rem",
+              sm: "0.25rem",
+              md: "0.5rem",
+              lg: "0.75rem",
+              xl: "1rem",
+              "2xl": "1.5rem",
+              full: "9999px"
+            },
+            spacing: {
+              "gutter": "1rem",
+              "gutter-mobile": "0.75rem",
+              "margin": "2rem",
+              "margin-mobile": "1rem",
+              "space-xs": "0.25rem",
+              "space-sm": "0.5rem",
+              "space-md": "1rem",
+              "space-lg": "1.5rem",
+              "space-xl": "2rem"
+            },
+            fontFamily: {
+              sans: ["Be Vietnam Pro", "sans-serif"],
+              headline: ["Epilogue", "sans-serif"],
+              body: ["Be Vietnam Pro", "sans-serif"]
+            }
+          }
+        }
+      }
+    </script>
   </head>
-  <body>
+  <body class="bg-surface font-body text-on-surface antialiased">
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
