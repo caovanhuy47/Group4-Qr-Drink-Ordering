@@ -40,8 +40,6 @@ export const PaymentHistoryView: React.FC = () => {
   // Fetch data with AbortController to handle race conditions when filters change quickly
   useEffect(() => {
     const controller = new AbortController();
-    setIsLoading(true);
-    setErrorMessage('');
 
     reportsApi
       .fetchPaymentHistory(
@@ -58,6 +56,7 @@ export const PaymentHistoryView: React.FC = () => {
       )
       .then((res) => {
         setHistoryData(res);
+        setErrorMessage('');
         setIsLoading(false);
       })
       .catch((err) => {

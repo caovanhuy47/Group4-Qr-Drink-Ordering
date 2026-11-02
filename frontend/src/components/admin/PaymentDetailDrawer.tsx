@@ -7,22 +7,19 @@ interface PaymentDetailDrawerProps {
 }
 
 export const PaymentDetailDrawer: React.FC<PaymentDetailDrawerProps> = ({ record, onClose }) => {
-  const [activeRecord, setActiveRecord] = useState<PaymentHistoryRecord | null>(record);
+  const [serverDetail, setServerDetail] = useState<PaymentHistoryRecord | null>(null);
   const [isLoadingDetail, setIsLoadingDetail] = useState<boolean>(false);
 
-  // Sync active record and fetch freshest details from server
+  // Fetch freshest details from server whenever selected record changes
   useEffect(() => {
-    setActiveRecord(record);
     if (!record) return;
 
     let ignore = false;
-    setIsLoadingDetail(true);
-
     reportsApi
       .fetchPaymentDetail(record.id || record.sessionId)
       .then((fresh) => {
         if (!ignore && fresh) {
-          setActiveRecord(fresh);
+          setServerDetail(fresh);
         }
       })
       .catch((err) => {
@@ -47,7 +44,7 @@ export const PaymentDetailDrawer: React.FC<PaymentDetailDrawerProps> = ({ record
   }, [onClose]);
 
   if (!record) return null;
-  const current = activeRecord || record;
+  const current = (serverDetail && (serverDetail.id === record.id || serverDetail.sessionId === record.sessionId)) ? serverDetail : record;
 
   return (
     <div className="fixed inset-0 z-50 overflow-hidden animate-fade-in" role="dialog" aria-modal="true">
