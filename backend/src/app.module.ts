@@ -4,6 +4,7 @@ import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ReportsModule } from './reports/reports.module.js';
+import { DishesModule } from './dishes/dishes.module.js';
 
 try {
   process.loadEnvFile();
@@ -31,6 +32,7 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
       synchronize: true,
     }),
     ReportsModule,
+    DishesModule,
   ],
   controllers: [AppController],
   providers: [AppService],
