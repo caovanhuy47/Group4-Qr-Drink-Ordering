@@ -66,9 +66,12 @@ export interface RestaurantContextType {
 
   // Admin Data Management
   dishes: Dish[];
-  toggleDishAvailability: (dishId: string) => void;
-  saveDish: (dish: Dish) => void;
-  deleteDish: (dishId: string) => void;
+  isDishesLoading: boolean;
+  dishesError: string;
+  refreshDishes: () => Promise<void>;
+  toggleDishAvailability: (dishId: string) => Promise<boolean>;
+  saveDish: (dish: Dish) => Promise<boolean>;
+  deleteDish: (dishId: string) => Promise<boolean>;
 
   categories: Category[];
   addCategory: (name: string, icon: string) => void;

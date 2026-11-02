@@ -59,6 +59,7 @@ export interface Dish {
   badge?: string;
   badgeType?: 'hot' | 'new' | 'veg' | 'special';
   isAvailable: boolean;
+  isArchived?: boolean;
   sizes: SizeOption[];
   toppings: Topping[];
 }

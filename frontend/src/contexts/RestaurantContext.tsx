@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, type ReactNode } from 'react';
+import React, { useState, useEffect, useRef, useCallback, type ReactNode } from 'react';
 import type {
   Dish,
   Category,
@@ -24,6 +24,7 @@ import {
   INITIAL_TABLES,
 } from '../data/mockData';
 import { reportsApi } from '../services/reportsApi';
+import { dishesApi } from '../services/dishesApi';
 import { RestaurantContext } from './restaurantContextDef';
 
 const routeToHash: Record<ViewRoute, string> = {
@@ -292,6 +293,53 @@ export const RestaurantProvider: React.FC<{ children: ReactNode }> = ({ children
 
   const [dishes, setDishes] = useState<Dish[]>(INITIAL_DISHES);
   const [categories, setCategories] = useState<Category[]>(INITIAL_CATEGORIES);
+  const [isDishesLoading, setIsDishesLoading] = useState<boolean>(true);
+  const [dishesError, setDishesError] = useState<string>('');
+
+  const refreshDishes = useCallback(async () => {
+    try {
+      const [liveDishes, liveCategories] = await Promise.all([
+        dishesApi.fetchDishes({ includeArchived: true }),
+        dishesApi.fetchCategories(),
+      ]);
+      setDishes(liveDishes);
+      setCategories(liveCategories);
+      setDishesError('');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Không thể tải danh sách món ăn từ máy chủ';
+      setDishesError(msg);
+      console.warn('Could not load dishes from API, kept fallback:', err);
+    } finally {
+      setIsDishesLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    let ignore = false;
+    Promise.all([
+      dishesApi.fetchDishes({ includeArchived: true }),
+      dishesApi.fetchCategories(),
+    ])
+      .then(([liveDishes, liveCategories]) => {
+        if (!ignore) {
+          setDishes(liveDishes);
+          setCategories(liveCategories);
+          setDishesError('');
+          setIsDishesLoading(false);
+        }
+      })
+      .catch((err) => {
+        if (!ignore) {
+          const msg = err instanceof Error ? err.message : 'Không thể tải danh sách món ăn từ máy chủ';
+          setDishesError(msg);
+          setIsDishesLoading(false);
+        }
+      });
+
+    return () => {
+      ignore = true;
+    };
+  }, []);
   const [banners, setBanners] = useState<Banner[]>(INITIAL_BANNERS);
   const [staffList, setStaffList] = useState<Staff[]>(INITIAL_STAFF);
   const [currentUser, setCurrentUser] = useState<Staff | null>(INITIAL_STAFF[0]);
@@ -637,24 +685,65 @@ export const RestaurantProvider: React.FC<{ children: ReactNode }> = ({ children
     }
   };
 
-  const toggleDishAvailability = (dishId: string) => {
-    setDishes((prev) =>
-      prev.map((d) => (d.id === dishId ? { ...d, isAvailable: !d.isAvailable } : d))
-    );
+  const toggleDishAvailability = async (dishId: string): Promise<boolean> => {
+    const staffId = currentUser?.id || 'staff-1';
+    try {
+      const updated = await dishesApi.toggleDishStatus(dishId, staffId);
+      setDishes((prev) => prev.map((d) => (d.id === dishId ? updated : d)));
+      showToast(
+        `Đã chuyển trạng thái món "${updated.name}" sang: ${updated.isAvailable ? 'Còn món (Đang mở bán)' : 'Tạm hết món'}`,
+        'success'
+      );
+      return true;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Lỗi khi cập nhật trạng thái món';
+      showToast(msg, 'error');
+      return false;
+    }
   };
 
-  const saveDish = (dish: Dish) => {
-    setDishes((prev) => {
-      const exists = prev.some((d) => d.id === dish.id);
+  const saveDish = async (dish: Dish): Promise<boolean> => {
+    const staffId = currentUser?.id || 'staff-1';
+    try {
+      const exists = dishes.some((d) => d.id === dish.id);
+      let saved: Dish;
       if (exists) {
-        return prev.map((d) => (d.id === dish.id ? dish : d));
+        saved = await dishesApi.updateDish(dish.id, dish, staffId);
+        setDishes((prev) => prev.map((d) => (d.id === dish.id ? saved : d)));
+        showToast(`Đã cập nhật món "${saved.name}" thành công!`, 'success');
+      } else {
+        saved = await dishesApi.createDish(dish, staffId);
+        setDishes((prev) => [saved, ...prev]);
+        showToast(`Đã thêm món mới "${saved.name}" vào thực đơn!`, 'success');
       }
-      return [dish, ...prev];
-    });
+      dishesApi.fetchCategories().then(setCategories).catch(() => {});
+      return true;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Lỗi lưu thông tin món ăn';
+      showToast(msg, 'error');
+      throw err;
+    }
   };
 
-  const deleteDish = (dishId: string) => {
-    setDishes((prev) => prev.filter((d) => d.id !== dishId));
+  const deleteDish = async (dishId: string): Promise<boolean> => {
+    const staffId = currentUser?.id || 'staff-1';
+    try {
+      const result = await dishesApi.deleteDish(dishId, staffId);
+      if (result.archived) {
+        setDishes((prev) =>
+          prev.map((d) => (d.id === dishId ? { ...d, isArchived: true, isAvailable: false } : d))
+        );
+      } else {
+        setDishes((prev) => prev.filter((d) => d.id !== dishId));
+      }
+      showToast(result.message, result.archived ? 'info' : 'success');
+      dishesApi.fetchCategories().then(setCategories).catch(() => {});
+      return true;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Lỗi khi xóa món ăn';
+      showToast(msg, 'error');
+      return false;
+    }
   };
 
   const addCategory = (name: string, icon: string) => {
@@ -733,6 +822,9 @@ export const RestaurantProvider: React.FC<{ children: ReactNode }> = ({ children
         submitOrder,
         updateOrderStatus,
         dishes,
+        isDishesLoading,
+        dishesError,
+        refreshDishes,
         toggleDishAvailability,
         saveDish,
         deleteDish,
