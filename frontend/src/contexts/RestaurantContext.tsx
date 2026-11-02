@@ -1,4 +1,4 @@
-import React, { useState, useEffect, type ReactNode } from 'react';
+import React, { useState, useEffect, useRef, type ReactNode } from 'react';
 import type {
   Dish,
   Category,
@@ -76,12 +76,159 @@ const hashToRoute: Record<string, ViewRoute> = {
 function getRouteFromHash(): ViewRoute {
   if (typeof window === 'undefined') return 'lobby';
   const hash = window.location.hash || '';
-  return hashToRoute[hash] || 'lobby';
+  const hashPath = hash.split('?')[0];
+  return hashToRoute[hashPath] || 'lobby';
+}
+
+function normalizeTableNumber(raw: string): string {
+  const trimmed = raw.trim();
+  if (/^bàn\s*/i.test(trimmed)) {
+    const digits = trimmed.replace(/^bàn\s*/i, '').padStart(2, '0');
+    return `Bàn ${digits}`;
+  }
+  const clean = trimmed.replace(/^[bB]/, '');
+  if (/^\d+$/.test(clean)) {
+    return `Bàn ${clean.padStart(2, '0')}`;
+  }
+  return trimmed.startsWith('Bàn ') ? trimmed : `Bàn ${trimmed}`;
+}
+
+function resolveCurrentTableFromEnv(): string {
+  if (typeof window === 'undefined') return '';
+
+  // 1. Check URL query string (?table=05, ?t=B05, ?ban=5)
+  const searchParams = new URLSearchParams(window.location.search);
+  const paramVal = searchParams.get('table') || searchParams.get('t') || searchParams.get('ban');
+  if (paramVal) {
+    const norm = normalizeTableNumber(paramVal);
+    try { sessionStorage.setItem('huycv_active_table', norm); } catch {}
+    return norm;
+  }
+
+  // 2. Check hash query string (e.g. #/?table=05 or #/lobby?table=02)
+  const hash = window.location.hash || '';
+  const hashQueryIdx = hash.indexOf('?');
+  if (hashQueryIdx !== -1) {
+    const hashParams = new URLSearchParams(hash.substring(hashQueryIdx + 1));
+    const hashParamVal = hashParams.get('table') || hashParams.get('t') || hashParams.get('ban');
+    if (hashParamVal) {
+      const norm = normalizeTableNumber(hashParamVal);
+      try { sessionStorage.setItem('huycv_active_table', norm); } catch {}
+      return norm;
+    }
+  }
+
+  // 3. Check sessionStorage
+  try {
+    const saved = sessionStorage.getItem('huycv_active_table');
+    if (saved) return saved;
+  } catch {}
+
+  // 4. Default: empty when no QR scanned or table chosen
+  return '';
+}
+
+function loadDraftCartForTable(table: string): CartItem[] {
+  if (typeof window === 'undefined' || !table) return [];
+  try {
+    const key = `huycv_cart_${table}`;
+    const raw = sessionStorage.getItem(key);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) return parsed;
+    return [];
+  } catch {
+    return [];
+  }
+}
+
+function saveDraftCartForTable(table: string, items: CartItem[]): void {
+  if (typeof window === 'undefined' || !table) return;
+  try {
+    const key = `huycv_cart_${table}`;
+    if (items.length === 0) {
+      sessionStorage.removeItem(key);
+    } else {
+      sessionStorage.setItem(key, JSON.stringify(items));
+    }
+  } catch (e) {
+    console.warn('Could not save draft cart:', e);
+  }
+}
+
+function loadActiveOrderForTable(table: string): Order | null {
+  if (typeof window === 'undefined' || !table) return null;
+  try {
+    const key = `huycv_active_order_${table}`;
+    const raw = sessionStorage.getItem(key);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
+function saveActiveOrderForTable(table: string, order: Order | null): void {
+  if (typeof window === 'undefined' || !table) return;
+  try {
+    const key = `huycv_active_order_${table}`;
+    if (!order) {
+      sessionStorage.removeItem(key);
+    } else {
+      sessionStorage.setItem(key, JSON.stringify(order));
+    }
+  } catch (e) {
+    console.warn('Could not save active order:', e);
+  }
 }
 
 export const RestaurantProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [currentTable] = useState<string>('Bàn 05');
+  const [currentTable, setCurrentTableState] = useState<string>(() => resolveCurrentTableFromEnv());
   const [viewRoute, setViewRouteState] = useState<ViewRoute>(() => getRouteFromHash());
+
+  const currentTableRef = useRef(currentTable);
+  useEffect(() => {
+    currentTableRef.current = currentTable;
+  }, [currentTable]);
+
+  // Real-time table selection changer with session isolation
+  const setCurrentTable = (table: string) => {
+    const normalized = table ? normalizeTableNumber(table) : '';
+    setCurrentTableState(normalized);
+    currentTableRef.current = normalized;
+    if (normalized) {
+      try {
+        sessionStorage.setItem('huycv_active_table', normalized);
+      } catch {}
+      setCartState(loadDraftCartForTable(normalized));
+      setCurrentOrderState(loadActiveOrderForTable(normalized));
+    } else {
+      try {
+        sessionStorage.removeItem('huycv_active_table');
+      } catch {}
+      setCartState([]);
+      setCurrentOrderState(null);
+    }
+  };
+
+  // Draft cart scoped by current table (empty by default for new customers)
+  const [cart, setCartState] = useState<CartItem[]>(() => loadDraftCartForTable(currentTable));
+
+  const setCart = (action: React.SetStateAction<CartItem[]>) => {
+    setCartState((prev) => {
+      const next = typeof action === 'function' ? action(prev) : action;
+      saveDraftCartForTable(currentTableRef.current, next);
+      return next;
+    });
+  };
+
+  // Order placed by current table (null by default until customer places order)
+  const [currentOrder, setCurrentOrderState] = useState<Order | null>(() => loadActiveOrderForTable(currentTable));
+
+  const setCurrentOrder = (order: Order | null) => {
+    setCurrentOrderState(order);
+    saveActiveOrderForTable(currentTableRef.current, order);
+  };
 
   // Prevent browser from restoring awkward mid-page scroll offsets on reload
   useEffect(() => {
@@ -95,6 +242,12 @@ export const RestaurantProvider: React.FC<{ children: ReactNode }> = ({ children
     const handleHashChange = () => {
       const nextRoute = getRouteFromHash();
       setViewRouteState(nextRoute);
+
+      const envTable = resolveCurrentTableFromEnv();
+      if (envTable && envTable !== currentTableRef.current) {
+        setCurrentTable(envTable);
+      }
+
       window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
     };
 
@@ -143,47 +296,7 @@ export const RestaurantProvider: React.FC<{ children: ReactNode }> = ({ children
   const [staffList, setStaffList] = useState<Staff[]>(INITIAL_STAFF);
   const [currentUser, setCurrentUser] = useState<Staff | null>(INITIAL_STAFF[0]);
 
-  // Initial cart sample items
-  const [cart, setCart] = useState<CartItem[]>([
-    {
-      cartItemId: 'init-1',
-      dishId: 'dish-1',
-      name: 'Bún Bò Huế Đặc Biệt',
-      basePrice: 55000,
-      image: INITIAL_DISHES[0].image,
-      selectedSize: INITIAL_DISHES[0].sizes[0],
-      selectedToppings: [INITIAL_DISHES[0].toppings[0]],
-      notes: 'Ít ớt, nhiều hành lá',
-      quantity: 1,
-      totalPrice: 65000,
-    },
-    {
-      cartItemId: 'init-2',
-      dishId: 'dish-4',
-      name: 'Trà Tắc Xí Muội Đường Phèn',
-      basePrice: 20000,
-      image: INITIAL_DISHES[3].image,
-      selectedSize: INITIAL_DISHES[3].sizes[0],
-      selectedToppings: [],
-      notes: 'Nhiều đá riêng',
-      quantity: 2,
-      totalPrice: 40000,
-    },
-    {
-      cartItemId: 'init-3',
-      dishId: 'dish-2',
-      name: 'Bánh Tráng Nướng Trứng Xúc Xích',
-      basePrice: 30000,
-      image: INITIAL_DISHES[1].image,
-      selectedSize: INITIAL_DISHES[1].sizes[0],
-      selectedToppings: [INITIAL_DISHES[1].toppings[0]],
-      notes: 'Nướng giòn kỹ',
-      quantity: 1,
-      totalPrice: 38000,
-    },
-  ]);
-
-  // Customer Authentication state
+  // Customer Authentication state (Cleaned for customer flow)
   const [currentCustomer, setCurrentCustomer] = useState<CustomerUser | null>(null);
   const [isCustomerAuthModalOpen, setIsCustomerAuthModalOpen] = useState<boolean>(false);
 
@@ -247,41 +360,6 @@ export const RestaurantProvider: React.FC<{ children: ReactNode }> = ({ children
 
   // Voucher discount is 0 in customer scope
   const voucherDiscountAmount = 0;
-
-  const [currentOrder, setCurrentOrder] = useState<Order | null>({
-    id: 'DH-2701',
-    tableNumber: 'Bàn 05',
-    createdAt: '19:42 — 31/10/2026',
-    items: [
-      {
-        cartItemId: 'order-item-1',
-        dishId: 'dish-1',
-        name: 'Bún Bò Huế Đặc Biệt',
-        basePrice: 55000,
-        image: INITIAL_DISHES[0].image,
-        selectedSize: { id: 's-big', name: 'Tô lớn (+thịt)', price: 10000 },
-        selectedToppings: [{ id: 'top-1', name: 'Chả cua thêm', price: 10000 }],
-        notes: 'Nhiều nước béo, ít cay',
-        quantity: 1,
-        totalPrice: 75000,
-      },
-      {
-        cartItemId: 'order-item-2',
-        dishId: 'dish-4',
-        name: 'Trà Tắc Xí Muội Đường Phèn',
-        basePrice: 20000,
-        image: INITIAL_DISHES[3].image,
-        selectedSize: { id: 's-l', name: 'Ly lớn khổng lồ (700ml)', price: 5000 },
-        selectedToppings: [{ id: 'top-ximuoi', name: 'Xí muội ngâm thêm', price: 4000 }],
-        notes: 'Ít ngọt',
-        quantity: 2,
-        totalPrice: 58000,
-      },
-    ],
-    totalAmount: 133000,
-    status: 'preparing',
-    notes: 'Khách yêu cầu mang trà tắc ra trước giải khát',
-  });
 
   const openDishDetail = (dish: Dish) => {
     setSelectedDishForDetail(dish);
@@ -618,6 +696,7 @@ export const RestaurantProvider: React.FC<{ children: ReactNode }> = ({ children
     <RestaurantContext.Provider
       value={{
         currentTable,
+        setCurrentTable,
         viewRoute,
         setViewRoute,
         searchTerm,

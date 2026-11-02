@@ -2,7 +2,6 @@ import React from 'react';
 import { RestaurantProvider } from './contexts/RestaurantContext';
 import { useRestaurant } from './contexts/useRestaurant';
 import { DishDetailModal } from './components/customer/DishDetailModal';
-import { CustomerAuthModal } from './components/customer/CustomerAuthModal';
 import { ToastContainer } from './components/common/ToastContainer';
 
 // Customer Views
@@ -101,9 +100,6 @@ const MainContent: React.FC = () => {
       {selectedDishForDetail && (
         <DishDetailModal key={selectedDishForDetail.id} />
       )}
-
-      {/* Customer Account & Membership Modal */}
-      <CustomerAuthModal />
 
       {/* Global In-App Notification Toast */}
       <InAppToast />

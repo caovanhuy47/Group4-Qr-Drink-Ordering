@@ -18,6 +18,7 @@ import type {
 export interface RestaurantContextType {
   // Navigation
   currentTable: string;
+  setCurrentTable: (table: string) => void;
   viewRoute: ViewRoute;
   setViewRoute: (route: ViewRoute) => void;
 
