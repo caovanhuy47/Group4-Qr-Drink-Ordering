@@ -615,68 +615,122 @@ export const RestaurantProvider: React.FC<{ children: ReactNode }> = ({ children
     showToast('Dữ liệu bàn đã được đồng bộ mới nhất!', 'info');
   };
 
-  const submitOrder = (orderNotes?: string) => {
-    // Total amount is strictly equal to cartTotalPrice (no voucher in customer flow)
-    const finalAmount = cartTotalPrice;
-    const orderId = `DH-${Math.floor(1000 + Math.random() * 9000)}`;
-    const orderTime = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+  const submitOrder = async (orderNotes?: string): Promise<{ success: boolean; message: string }> => {
+    if (cart.length === 0) {
+      showToast('Giỏ hàng đang trống, vui lòng chọn món trước khi đặt', 'error');
+      return { success: false, message: 'Giỏ hàng trống' };
+    }
 
-    const newOrder: Order = {
-      id: orderId,
-      tableNumber: currentTable,
-      createdAt: `${orderTime} — ${new Date().toLocaleDateString('vi-VN')}`,
-      items: [...cart],
-      totalAmount: finalAmount,
-      status: 'pending',
-      notes: orderNotes,
-    };
-    setCurrentOrder(newOrder);
+    try {
+      // Validate order items against real backend database
+      const valPayload = cart.map((c) => ({
+        cartItemId: c.cartItemId,
+        dishId: c.dishId,
+        name: c.name,
+        sizeId: c.selectedSize?.id,
+        sizeName: c.selectedSize?.name,
+        toppings: c.selectedToppings?.map((t) => t.name) || [],
+        quantity: c.quantity,
+        clientUnitPrice: c.totalPrice / c.quantity,
+        clientTotalPrice: c.totalPrice,
+      }));
 
-    // Sync to Table Management (real-time order reflection)
-    const orderItems: TableOrderItem[] = cart.map((c) => ({
-      itemId: c.cartItemId,
-      dishId: c.dishId,
-      name: c.name,
-      selectedSize: c.selectedSize,
-      selectedToppings: c.selectedToppings,
-      notes: c.notes,
-      quantity: c.quantity,
-      unitPrice: c.totalPrice / c.quantity,
-      totalPrice: c.totalPrice,
-    }));
+      const valResult = await dishesApi.validateOrder(currentTable, valPayload);
 
-    setTables((prev) =>
-      prev.map((t) => {
-        // Match table number (e.g. "Bàn 05" vs "BÀN 05")
-        if (t.number.toLowerCase() === currentTable.toLowerCase()) {
-          const existingSession = t.currentSession;
-          const mergedItems: TableOrderItem[] = existingSession
-            ? [...existingSession.items, ...orderItems]
-            : orderItems;
-
-          const newSession: TableSession = {
-            sessionId: existingSession ? existingSession.sessionId : `LT-${Math.floor(2000 + Math.random() * 8000)}`,
-            tableId: t.id,
-            tableNumber: t.number,
-            firstOrderAt: existingSession ? existingSession.firstOrderAt : orderTime,
-            waitingMinutes: 1,
-            items: mergedItems,
-            totalQuantity: (existingSession?.totalQuantity || 0) + cartTotalCount,
-            totalAmount: (existingSession?.totalAmount || 0) + finalAmount,
-          };
-
-          return {
-            ...t,
-            status: 'ordered',
-            currentSession: newSession,
-          };
+      if (!valResult.valid) {
+        if (valResult.reason === 'price_changed') {
+          // Update cart item with new price from database
+          if (valResult.newUnitPrice !== undefined) {
+            setCart((prev) =>
+              prev.map((item) =>
+                item.dishId === valResult.dishId
+                  ? {
+                      ...item,
+                      basePrice: valResult.newUnitPrice!,
+                      totalPrice: valResult.newUnitPrice! * item.quantity,
+                    }
+                  : item
+              )
+            );
+          }
+          showToast(valResult.message, 'error');
+          return { success: false, message: valResult.message };
         }
-        return t;
-      })
-    );
 
-    setCart([]);
-    setViewRoute('order-tracking');
+        if (valResult.reason === 'dish_unavailable' || valResult.reason === 'dish_not_found') {
+          showToast(valResult.message, 'error');
+          return { success: false, message: valResult.message };
+        }
+      }
+
+      // Backend calculated verified total amount
+      const finalAmount = valResult.totalAmount ?? cartTotalPrice;
+      const orderId = `DH-${Math.floor(1000 + Math.random() * 9000)}`;
+      const orderTime = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+
+      const newOrder: Order = {
+        id: orderId,
+        tableNumber: currentTable,
+        createdAt: `${orderTime} — ${new Date().toLocaleDateString('vi-VN')}`,
+        items: [...cart],
+        totalAmount: finalAmount,
+        status: 'pending',
+        notes: orderNotes,
+      };
+      setCurrentOrder(newOrder);
+
+      // Sync to Table Management (real-time order reflection)
+      const orderItems: TableOrderItem[] = cart.map((c) => ({
+        itemId: c.cartItemId,
+        dishId: c.dishId,
+        name: c.name,
+        selectedSize: c.selectedSize,
+        selectedToppings: c.selectedToppings,
+        notes: c.notes,
+        quantity: c.quantity,
+        unitPrice: c.totalPrice / c.quantity,
+        totalPrice: c.totalPrice,
+      }));
+
+      setTables((prev) =>
+        prev.map((t) => {
+          // Match table number (e.g. "Bàn 05" vs "BÀN 05")
+          if (t.number.toLowerCase() === currentTable.toLowerCase()) {
+            const existingSession = t.currentSession;
+            const mergedItems: TableOrderItem[] = existingSession
+              ? [...existingSession.items, ...orderItems]
+              : orderItems;
+
+            const newSession: TableSession = {
+              sessionId: existingSession ? existingSession.sessionId : `LT-${Math.floor(2000 + Math.random() * 8000)}`,
+              tableId: t.id,
+              tableNumber: t.number,
+              firstOrderAt: existingSession ? existingSession.firstOrderAt : orderTime,
+              waitingMinutes: 1,
+              items: mergedItems,
+              totalQuantity: (existingSession?.totalQuantity || 0) + cartTotalCount,
+              totalAmount: (existingSession?.totalAmount || 0) + finalAmount,
+            };
+
+            return {
+              ...t,
+              status: 'ordered',
+              currentSession: newSession,
+            };
+          }
+          return t;
+        })
+      );
+
+      setCart([]);
+      setViewRoute('order-tracking');
+      showToast(`Đã gửi đơn gọi món thành công cho ${currentTable}!`, 'success');
+      return { success: true, message: 'Đặt món thành công' };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Lỗi khi kiểm tra thực đơn';
+      showToast(msg, 'error');
+      return { success: false, message: msg };
+    }
   };
 
   const updateOrderStatus = (status: OrderStatus) => {

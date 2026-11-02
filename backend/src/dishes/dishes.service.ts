@@ -7,6 +7,7 @@ import { TableSessionRecord } from '../reports/entities/table-session-record.ent
 import { CreateDishDto } from './dto/create-dish.dto.js';
 import { UpdateDishDto } from './dto/update-dish.dto.js';
 import { QueryDishDto } from './dto/query-dish.dto.js';
+import { ValidateOrderDto } from './dto/validate-order.dto.js';
 
 interface StaffPermission {
   id: string;
@@ -293,6 +294,114 @@ export class DishesService implements OnModuleInit {
       success: true,
       archived: false,
       message: `Đã xóa món "${dish.name}" hoàn toàn khỏi thực đơn.`,
+    };
+  }
+
+  // Validate customer order items against current database dish prices and availability
+  async validateOrder(dto: ValidateOrderDto) {
+    if (!dto.items || dto.items.length === 0) {
+      throw new BadRequestException('Giỏ hàng chưa có món nào');
+    }
+
+    let calculatedTotalAmount = 0;
+    let calculatedTotalQuantity = 0;
+    const verifiedItems: Array<{
+      cartItemId: string;
+      dishId: string;
+      name: string;
+      sizeName: string;
+      toppings: string[];
+      unitPrice: number;
+      quantity: number;
+      totalPrice: number;
+    }> = [];
+
+    for (const item of dto.items) {
+      const dish = await this.dishRepo.findOne({ where: { id: item.dishId } });
+
+      if (!dish || dish.isArchived) {
+        return {
+          valid: false,
+          reason: 'dish_not_found',
+          dishId: item.dishId,
+          dishName: item.name || dish?.name || item.dishId,
+          message: `Món "${item.name || dish?.name || item.dishId}" hiện không còn trong thực đơn quán.`,
+        };
+      }
+
+      if (!dish.isAvailable) {
+        return {
+          valid: false,
+          reason: 'dish_unavailable',
+          dishId: dish.id,
+          dishName: dish.name,
+          message: `Món "${dish.name}" hiện đã tạm hết món. Vui lòng bỏ món này khỏi giỏ hàng trước khi đặt.`,
+        };
+      }
+
+      // Calculate size surcharge
+      let sizePrice = 0;
+      let matchedSizeName = 'Tiêu chuẩn';
+      if (dish.sizes && Array.isArray(dish.sizes) && item.sizeName) {
+        const matchedSize = dish.sizes.find(
+          (s) => s.id === item.sizeId || s.name === item.sizeName
+        );
+        if (matchedSize) {
+          sizePrice = matchedSize.price || 0;
+          matchedSizeName = matchedSize.name;
+        }
+      }
+
+      // Calculate toppings surcharge
+      let toppingsPrice = 0;
+      const matchedToppings: string[] = [];
+      if (dish.toppings && Array.isArray(dish.toppings) && item.toppings) {
+        for (const topName of item.toppings) {
+          const matchedTop = dish.toppings.find((t) => t.name === topName || t.id === topName);
+          if (matchedTop) {
+            toppingsPrice += matchedTop.price || 0;
+            matchedToppings.push(matchedTop.name);
+          }
+        }
+      }
+
+      const serverUnitPrice = dish.price + sizePrice + toppingsPrice;
+      const serverItemTotal = serverUnitPrice * item.quantity;
+
+      // Price changed validation
+      if (serverUnitPrice !== item.clientUnitPrice) {
+        return {
+          valid: false,
+          reason: 'price_changed',
+          dishId: dish.id,
+          dishName: dish.name,
+          oldUnitPrice: item.clientUnitPrice,
+          newUnitPrice: serverUnitPrice,
+          message: `Đơn giá của món "${dish.name}" đã được cập nhật thành ${serverUnitPrice.toLocaleString('vi-VN')}đ (trước đó: ${item.clientUnitPrice.toLocaleString('vi-VN')}đ). Vui lòng xác nhận lại giỏ hàng.`,
+        };
+      }
+
+      calculatedTotalAmount += serverItemTotal;
+      calculatedTotalQuantity += item.quantity;
+
+      verifiedItems.push({
+        cartItemId: item.cartItemId,
+        dishId: dish.id,
+        name: dish.name,
+        sizeName: matchedSizeName,
+        toppings: matchedToppings,
+        unitPrice: serverUnitPrice,
+        quantity: item.quantity,
+        totalPrice: serverItemTotal,
+      });
+    }
+
+    return {
+      valid: true,
+      totalAmount: calculatedTotalAmount,
+      totalQuantity: calculatedTotalQuantity,
+      items: verifiedItems,
+      message: 'Giỏ hàng hợp lệ, đã xác thực với cơ sở dữ liệu thực đơn.',
     };
   }
 

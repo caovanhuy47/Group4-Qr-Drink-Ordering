@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import type { SizeOption, Topping } from '../../types/restaurant';
 import { useRestaurant } from '../../contexts/useRestaurant';
+import { DEFAULT_FALLBACK_IMAGE } from '../../services/dishesApi';
 
 export const DishDetailModal: React.FC = () => {
   const { selectedDishForDetail, closeDishDetail, addToCart } = useRestaurant();
@@ -68,6 +69,7 @@ export const DishDetailModal: React.FC = () => {
               src={dish.image}
               alt={dish.name}
               className="w-full sm:w-36 aspect-[4/3] sm:aspect-square object-cover rounded-xl bg-surface-container"
+              onError={(e) => { (e.currentTarget as HTMLImageElement).src = DEFAULT_FALLBACK_IMAGE; }}
             />
             <div className="flex-1">
               <span className="text-[11px] font-bold text-primary uppercase tracking-wider">

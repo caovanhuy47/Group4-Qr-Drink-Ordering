@@ -3,6 +3,7 @@ import { DishesService } from './dishes.service.js';
 import { CreateDishDto } from './dto/create-dish.dto.js';
 import { UpdateDishDto } from './dto/update-dish.dto.js';
 import { QueryDishDto } from './dto/query-dish.dto.js';
+import { ValidateOrderDto } from './dto/validate-order.dto.js';
 
 @Controller('api/dishes')
 export class DishesController {
@@ -11,6 +12,11 @@ export class DishesController {
   @Get('categories')
   findAllCategories() {
     return this.dishesService.findAllCategories();
+  }
+
+  @Post('validate-order')
+  validateOrder(@Body() dto: ValidateOrderDto) {
+    return this.dishesService.validateOrder(dto);
   }
 
   @Get()

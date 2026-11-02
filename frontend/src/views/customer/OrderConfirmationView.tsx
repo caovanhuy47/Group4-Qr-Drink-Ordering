@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useRestaurant } from '../../contexts/useRestaurant';
 
 export const OrderConfirmationView: React.FC = () => {
@@ -10,10 +10,26 @@ export const OrderConfirmationView: React.FC = () => {
     setViewRoute,
   } = useRestaurant();
 
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
   const finalPrice = cartTotalPrice;
 
-  const handleConfirm = () => {
-    submitOrder();
+  const handleConfirm = async () => {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+    setErrorMessage(null);
+    try {
+      const result = await submitOrder();
+      if (!result.success) {
+        setErrorMessage(result.message);
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Có lỗi xảy ra khi gửi đơn vào bếp. Vui lòng thử lại.';
+      setErrorMessage(msg);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -24,7 +40,8 @@ export const OrderConfirmationView: React.FC = () => {
           <div className="flex items-center gap-3">
             <button
               onClick={() => setViewRoute('cart')}
-              className="w-9 h-9 rounded-full bg-surface-container flex items-center justify-center text-on-surface hover:bg-surface-container-high transition-colors"
+              disabled={isSubmitting}
+              className="w-9 h-9 rounded-full bg-surface-container flex items-center justify-center text-on-surface hover:bg-surface-container-high transition-colors disabled:opacity-50"
             >
               <span className="material-symbols-outlined text-[20px]">arrow_back</span>
             </button>
@@ -40,6 +57,17 @@ export const OrderConfirmationView: React.FC = () => {
 
       {/* Main Confirmation Content */}
       <main className="max-w-[720px] mx-auto w-full px-4 md:px-8 py-6 flex-1 space-y-4">
+        {/* Error Alert Banner if validation fails */}
+        {errorMessage && (
+          <div className="bg-error-container/20 border border-error/30 rounded-xl p-4 flex items-start gap-3 text-xs text-error">
+            <span className="material-symbols-outlined text-[20px] shrink-0 text-error">error</span>
+            <div className="flex-1 space-y-1">
+              <span className="font-bold text-sm block">Không thể gửi đơn vào bếp</span>
+              <p className="text-on-surface-variant leading-relaxed">{errorMessage}</p>
+            </div>
+          </div>
+        )}
+
         {/* Table & Bill Highlight Box */}
         <div className="bg-surface-container-lowest border-2 border-primary-container/30 rounded-2xl p-5 md:p-6 shadow-warm-sm text-center space-y-3">
           <div className="w-14 h-14 rounded-full bg-primary-soft text-primary mx-auto flex items-center justify-center">
@@ -128,16 +156,27 @@ export const OrderConfirmationView: React.FC = () => {
         <div className="max-w-[720px] mx-auto flex flex-col sm:flex-row gap-2.5">
           <button
             onClick={() => setViewRoute('cart')}
-            className="w-full sm:w-1/3 py-3 rounded-full bg-surface-container text-on-surface font-headline font-semibold text-xs md:text-sm hover:bg-surface-container-high transition-colors"
+            disabled={isSubmitting}
+            className="w-full sm:w-1/3 py-3 rounded-full bg-surface-container text-on-surface font-headline font-semibold text-xs md:text-sm hover:bg-surface-container-high transition-colors disabled:opacity-50"
           >
             Quay lại sửa giỏ
           </button>
           <button
             onClick={handleConfirm}
-            className="w-full sm:flex-1 py-3.5 rounded-full bg-primary-container text-on-primary hover:bg-primary-hover font-headline font-bold text-sm shadow-warm-md flex items-center justify-center gap-2 transition-transform active:scale-98"
+            disabled={isSubmitting || cart.length === 0}
+            className="w-full sm:flex-1 py-3.5 rounded-full bg-primary-container text-on-primary hover:bg-primary-hover font-headline font-bold text-sm shadow-warm-md flex items-center justify-center gap-2 transition-transform active:scale-98 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <span className="material-symbols-outlined text-[20px]">send</span>
-            <span>Xác nhận gửi đơn vào bếp ({finalPrice.toLocaleString('vi-VN')}đ)</span>
+            {isSubmitting ? (
+              <>
+                <span className="material-symbols-outlined text-[20px] animate-spin">progress_activity</span>
+                <span>Đang kiểm tra & gửi đơn...</span>
+              </>
+            ) : (
+              <>
+                <span className="material-symbols-outlined text-[20px]">send</span>
+                <span>Xác nhận gửi đơn vào bếp ({finalPrice.toLocaleString('vi-VN')}đ)</span>
+              </>
+            )}
           </button>
         </div>
       </footer>

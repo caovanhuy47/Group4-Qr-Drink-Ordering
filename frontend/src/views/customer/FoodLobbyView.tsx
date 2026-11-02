@@ -15,8 +15,11 @@ export const FoodLobbyView: React.FC = () => {
     banners,
   } = useRestaurant();
 
+  // Filter active dishes (exclude archived)
+  const activeDishes = dishes.filter((dish) => !dish.isArchived);
+
   // Filter dishes by search term and category
-  const filteredDishes = dishes.filter((dish) => {
+  const filteredDishes = activeDishes.filter((dish) => {
     const matchesSearch =
       searchTerm === '' ||
       dish.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -32,7 +35,7 @@ export const FoodLobbyView: React.FC = () => {
     return matchesSearch && matchesCategory;
   });
 
-  const bestSellerDishes = dishes.filter(
+  const bestSellerDishes = activeDishes.filter(
     (d) => d.badge === 'Bán chạy' || d.badge === 'Món hot' || d.badge === 'Đặc trưng'
   );
 

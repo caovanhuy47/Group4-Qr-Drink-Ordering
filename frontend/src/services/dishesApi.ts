@@ -1,5 +1,8 @@
 import type { Dish, Category } from '../types/restaurant';
 
+export const DEFAULT_FALLBACK_IMAGE =
+  'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=600&auto=format&fit=crop&q=80';
+
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
 
 export const dishesApi = {
@@ -131,6 +134,60 @@ export const dishesApi = {
 
     if (!res.ok) {
       let errMsg = `Lỗi xóa món (${res.status})`;
+      try {
+        const errJson = await res.json();
+        if (errJson && errJson.message) {
+          errMsg = Array.isArray(errJson.message) ? errJson.message.join(', ') : errJson.message;
+        }
+      } catch {}
+      throw new Error(errMsg);
+    }
+
+    return res.json();
+  },
+
+  async validateOrder(
+    tableNumber: string,
+    items: Array<{
+      cartItemId: string;
+      dishId: string;
+      name?: string;
+      sizeId?: string;
+      sizeName?: string;
+      toppings?: string[];
+      quantity: number;
+      clientUnitPrice: number;
+      clientTotalPrice: number;
+    }>,
+  ): Promise<{
+    valid: boolean;
+    reason?: 'dish_not_found' | 'dish_unavailable' | 'price_changed';
+    dishId?: string;
+    dishName?: string;
+    oldUnitPrice?: number;
+    newUnitPrice?: number;
+    totalAmount?: number;
+    totalQuantity?: number;
+    items?: Array<{
+      cartItemId: string;
+      dishId: string;
+      name: string;
+      sizeName: string;
+      toppings: string[];
+      unitPrice: number;
+      quantity: number;
+      totalPrice: number;
+    }>;
+    message: string;
+  }> {
+    const res = await fetch(`${API_BASE_URL}/api/dishes/validate-order`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tableNumber, items }),
+    });
+
+    if (!res.ok) {
+      let errMsg = `Lỗi kiểm tra đơn hàng (${res.status})`;
       try {
         const errJson = await res.json();
         if (errJson && errJson.message) {

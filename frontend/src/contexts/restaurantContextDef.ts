@@ -48,7 +48,7 @@ export interface RestaurantContextType {
   removeVoucher: () => void;
   voucherDiscountAmount: number;
   currentOrder: Order | null;
-  submitOrder: (orderNotes?: string) => void;
+  submitOrder: (orderNotes?: string) => Promise<{ success: boolean; message: string }>;
   updateOrderStatus: (status: OrderStatus) => void;
 
   // In-app Notifications

@@ -1,6 +1,7 @@
 import React from 'react';
 import type { Dish } from '../../types/restaurant';
 import { useRestaurant } from '../../contexts/useRestaurant';
+import { DEFAULT_FALLBACK_IMAGE } from '../../services/dishesApi';
 
 interface DishCardProps {
   dish: Dish;
@@ -36,6 +37,7 @@ export const DishCard: React.FC<DishCardProps> = ({ dish, layout = 'grid' }) => 
             alt={dish.name}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
             loading="lazy"
+            onError={(e) => { (e.currentTarget as HTMLImageElement).src = DEFAULT_FALLBACK_IMAGE; }}
           />
           {dish.badge && (
             <span
@@ -112,6 +114,7 @@ export const DishCard: React.FC<DishCardProps> = ({ dish, layout = 'grid' }) => 
           alt={dish.name}
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
           loading="lazy"
+          onError={(e) => { (e.currentTarget as HTMLImageElement).src = DEFAULT_FALLBACK_IMAGE; }}
         />
         {dish.badge && (
           <span
