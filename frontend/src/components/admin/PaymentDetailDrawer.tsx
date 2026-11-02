@@ -1,5 +1,5 @@
-import React from 'react';
-import type { PaymentHistoryRecord } from '../../services/reportsApi';
+import React, { useState, useEffect } from 'react';
+import { reportsApi, type PaymentHistoryRecord } from '../../services/reportsApi';
 
 interface PaymentDetailDrawerProps {
   record: PaymentHistoryRecord | null;
@@ -7,18 +7,59 @@ interface PaymentDetailDrawerProps {
 }
 
 export const PaymentDetailDrawer: React.FC<PaymentDetailDrawerProps> = ({ record, onClose }) => {
+  const [activeRecord, setActiveRecord] = useState<PaymentHistoryRecord | null>(record);
+  const [isLoadingDetail, setIsLoadingDetail] = useState<boolean>(false);
+
+  // Sync active record and fetch freshest details from server
+  useEffect(() => {
+    setActiveRecord(record);
+    if (!record) return;
+
+    let ignore = false;
+    setIsLoadingDetail(true);
+
+    reportsApi
+      .fetchPaymentDetail(record.id || record.sessionId)
+      .then((fresh) => {
+        if (!ignore && fresh) {
+          setActiveRecord(fresh);
+        }
+      })
+      .catch((err) => {
+        console.warn('Could not fetch fresh payment detail, using initial snapshot:', err);
+      })
+      .finally(() => {
+        if (!ignore) setIsLoadingDetail(false);
+      });
+
+    return () => {
+      ignore = true;
+    };
+  }, [record]);
+
+  // Handle ESC key to close drawer
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+
   if (!record) return null;
+  const current = activeRecord || record;
 
   return (
-    <div className="fixed inset-0 z-50 overflow-hidden animate-fade-in">
+    <div className="fixed inset-0 z-50 overflow-hidden animate-fade-in" role="dialog" aria-modal="true">
       {/* Backdrop */}
       <div
         onClick={onClose}
-        className="absolute inset-0 bg-black/50 backdrop-blur-xs transition-opacity"
+        className="absolute inset-0 bg-black/50 backdrop-blur-xs transition-opacity cursor-pointer"
+        aria-hidden="true"
       />
 
       {/* Slide-over Drawer */}
-      <div className="fixed inset-y-0 right-0 max-w-full flex pl-10">
+      <div className="fixed inset-y-0 right-0 max-w-full flex pl-4 sm:pl-10">
         <div className="w-screen max-w-md bg-surface-container-lowest border-l border-border shadow-warm-lg flex flex-col justify-between animate-slide-left">
           {/* Header */}
           <div className="p-4 md:p-5 border-b border-border bg-surface-container-low/50">
@@ -26,21 +67,26 @@ export const PaymentDetailDrawer: React.FC<PaymentDetailDrawerProps> = ({ record
               <div>
                 <div className="flex items-center gap-2">
                   <span className="font-headline font-black text-2xl text-on-surface tracking-tight">
-                    {record.tableNumber}
+                    {current.tableNumber}
                   </span>
                   <span className="text-xs px-2.5 py-0.5 rounded-full bg-surface-container border border-border text-on-surface-variant font-medium">
-                    {record.area}
+                    {current.area}
                   </span>
                 </div>
                 <div className="flex items-center gap-2 mt-1 text-xs text-on-surface-variant">
-                  <span className="font-mono font-bold text-primary">#{record.sessionId}</span>
+                  <span className="font-mono font-bold text-primary">#{current.sessionId}</span>
                   <span>•</span>
-                  <span>Lượt đã thu tiền</span>
+                  <span>Lượt đã thu đủ tiền</span>
+                  {isLoadingDetail && (
+                    <span className="inline-block w-2.5 h-2.5 rounded-full border-2 border-primary border-t-transparent animate-spin ml-1" />
+                  )}
                 </div>
               </div>
 
               <button
+                type="button"
                 onClick={onClose}
+                aria-label="Đóng chi tiết"
                 className="w-8 h-8 rounded-full bg-surface-container hover:bg-surface-container-high flex items-center justify-center text-on-surface transition-colors"
               >
                 <span className="material-symbols-outlined text-[20px]">close</span>
@@ -49,8 +95,8 @@ export const PaymentDetailDrawer: React.FC<PaymentDetailDrawerProps> = ({ record
 
             {/* Current Table Lifecycle Status Badge */}
             <div className="mt-3 pt-3 border-t border-border/40 flex items-center justify-between text-xs">
-              <span className="font-semibold text-on-surface-variant">Tình trạng bàn hiện tại:</span>
-              {record.completedAt ? (
+              <span className="font-semibold text-on-surface-variant">Tình trạng vận hành:</span>
+              {current.completedAt ? (
                 <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-surface-container text-on-surface-variant font-bold border border-border">
                   <span className="material-symbols-outlined text-[14px]">check_circle</span>
                   <span>Lượt đã kết thúc • Bàn đã Trống</span>
@@ -58,7 +104,7 @@ export const PaymentDetailDrawer: React.FC<PaymentDetailDrawerProps> = ({ record
               ) : (
                 <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-tertiary-soft text-tertiary font-bold border border-tertiary/20">
                   <span className="material-symbols-outlined text-[14px]">event_seat</span>
-                  <span>Đã thu tiền • Khách vẫn Đang ngồi</span>
+                  <span>Đã thu tiền • Khách đang ngồi</span>
                 </span>
               )}
             </div>
@@ -69,19 +115,19 @@ export const PaymentDetailDrawer: React.FC<PaymentDetailDrawerProps> = ({ record
             <div className="grid grid-cols-2 gap-2 text-[11px]">
               <div>
                 <span className="text-on-surface-variant block">Thời điểm bắt đầu gọi:</span>
-                <strong className="text-on-surface block mt-0.5">{record.firstOrderAt || 'Chưa rõ'}</strong>
+                <strong className="text-on-surface block mt-0.5">{current.firstOrderAt || 'Chưa rõ'}</strong>
               </div>
               <div>
                 <span className="text-on-surface-variant block">Thời điểm xác nhận thu:</span>
-                <strong className="text-tertiary block mt-0.5">{record.confirmedAt}</strong>
+                <strong className="text-tertiary block mt-0.5">{current.confirmedAt}</strong>
               </div>
               <div>
                 <span className="text-on-surface-variant block">Người xác nhận thu tiền:</span>
-                <strong className="text-on-surface block mt-0.5">{record.confirmedBy}</strong>
+                <strong className="text-on-surface block mt-0.5">{current.confirmedBy}</strong>
               </div>
               <div>
                 <span className="text-on-surface-variant block">Thời điểm giải phóng bàn:</span>
-                <strong className="text-on-surface block mt-0.5">{record.completedAt || 'Chưa rời bàn'}</strong>
+                <strong className="text-on-surface block mt-0.5">{current.completedAt || 'Chưa rời bàn'}</strong>
               </div>
             </div>
           </div>
@@ -93,12 +139,12 @@ export const PaymentDetailDrawer: React.FC<PaymentDetailDrawerProps> = ({ record
                 Chi tiết các món đã phục vụ
               </h4>
               <span className="text-xs text-primary font-bold">
-                {record.totalQuantity} phần món
+                {current.totalQuantity} phần món
               </span>
             </div>
 
             <div className="divide-y divide-border/60">
-              {record.items.map((item, idx) => (
+              {current.items.map((item, idx) => (
                 <div key={`${item.itemId || idx}`} className="py-3 flex items-start justify-between gap-3 text-xs">
                   <div className="flex items-start gap-2.5 min-w-0">
                     <span className="w-6 h-6 rounded-md bg-primary-soft text-primary font-bold flex items-center justify-center shrink-0 mt-0.5">
@@ -148,7 +194,7 @@ export const PaymentDetailDrawer: React.FC<PaymentDetailDrawerProps> = ({ record
                 Tổng tiền đã thu đủ
               </span>
               <span className="font-headline font-black text-2xl text-primary">
-                {record.totalAmount.toLocaleString('vi-VN')}đ
+                {current.totalAmount.toLocaleString('vi-VN')}đ
               </span>
             </div>
 
@@ -171,4 +217,3 @@ export const PaymentDetailDrawer: React.FC<PaymentDetailDrawerProps> = ({ record
   );
 };
 export default PaymentDetailDrawer;
-
