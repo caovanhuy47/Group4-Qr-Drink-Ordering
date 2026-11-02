@@ -4,6 +4,8 @@ import { CreateDishDto } from './dto/create-dish.dto.js';
 import { UpdateDishDto } from './dto/update-dish.dto.js';
 import { QueryDishDto } from './dto/query-dish.dto.js';
 import { ValidateOrderDto } from './dto/validate-order.dto.js';
+import { CreateCategoryDto } from './dto/create-category.dto.js';
+import { UpdateCategoryDto } from './dto/update-category.dto.js';
 
 @Controller('api/dishes')
 export class DishesController {
@@ -12,6 +14,36 @@ export class DishesController {
   @Get('categories')
   findAllCategories() {
     return this.dishesService.findAllCategories();
+  }
+
+  @Get('categories/:id')
+  findCategory(@Param('id') id: string) {
+    return this.dishesService.findCategory(id);
+  }
+
+  @Post('categories')
+  createCategory(
+    @Body() dto: CreateCategoryDto,
+    @Headers('x-staff-id') staffId?: string,
+  ) {
+    return this.dishesService.createCategory(dto, staffId);
+  }
+
+  @Put('categories/:id')
+  updateCategory(
+    @Param('id') id: string,
+    @Body() dto: UpdateCategoryDto,
+    @Headers('x-staff-id') staffId?: string,
+  ) {
+    return this.dishesService.updateCategory(id, dto, staffId);
+  }
+
+  @Delete('categories/:id')
+  deleteCategory(
+    @Param('id') id: string,
+    @Headers('x-staff-id') staffId?: string,
+  ) {
+    return this.dishesService.deleteCategory(id, staffId);
   }
 
   @Post('validate-order')

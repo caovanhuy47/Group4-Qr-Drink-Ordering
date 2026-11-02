@@ -8,6 +8,8 @@ import { CreateDishDto } from './dto/create-dish.dto.js';
 import { UpdateDishDto } from './dto/update-dish.dto.js';
 import { QueryDishDto } from './dto/query-dish.dto.js';
 import { ValidateOrderDto } from './dto/validate-order.dto.js';
+import { CreateCategoryDto } from './dto/create-category.dto.js';
+import { UpdateCategoryDto } from './dto/update-category.dto.js';
 
 interface StaffPermission {
   id: string;
@@ -105,9 +107,161 @@ export class DishesService implements OnModuleInit {
         id: cat.id,
         name: cat.name,
         icon: cat.icon,
+        order: cat.order,
         count,
       };
     });
+  }
+
+  async findCategory(id: string) {
+    const cat = await this.categoryRepo.findOne({ where: { id } });
+    if (!cat) {
+      throw new NotFoundException(`Không tìm thấy danh mục có mã [${id}]`);
+    }
+    const count = await this.dishRepo.count({ where: { categoryId: id, isArchived: false } });
+    return {
+      id: cat.id,
+      name: cat.name,
+      icon: cat.icon,
+      order: cat.order,
+      count,
+    };
+  }
+
+  async createCategory(dto: CreateCategoryDto, staffId?: string) {
+    this.verifyMenuPermission(staffId);
+
+    const cleanName = dto.name?.trim();
+    if (!cleanName) {
+      throw new BadRequestException('Tên danh mục không được để trống');
+    }
+
+    // Check duplicate name (case-insensitive)
+    const allCats = await this.categoryRepo.find();
+    const isDuplicate = allCats.some(
+      (c) => c.name.toLowerCase() === cleanName.toLowerCase(),
+    );
+    if (isDuplicate) {
+      throw new BadRequestException(`Tên danh mục "${cleanName}" đã tồn tại trong thực đơn`);
+    }
+
+    let catId = dto.id?.trim();
+    if (!catId) {
+      catId = `cat-${Date.now()}`;
+    } else {
+      const existingId = await this.categoryRepo.findOne({ where: { id: catId } });
+      if (existingId) {
+        throw new BadRequestException(`Mã danh mục [${catId}] đã tồn tại`);
+      }
+    }
+
+    let order = dto.order;
+    if (order === undefined || order === null) {
+      const maxOrder = allCats.reduce((max, c) => Math.max(max, c.order || 0), 0);
+      order = maxOrder + 1;
+    }
+
+    const newCat = this.categoryRepo.create({
+      id: catId,
+      name: cleanName,
+      icon: dto.icon?.trim() || 'restaurant_menu',
+      order,
+    });
+
+    const saved = await this.categoryRepo.save(newCat);
+    return {
+      id: saved.id,
+      name: saved.name,
+      icon: saved.icon,
+      order: saved.order,
+      count: 0,
+    };
+  }
+
+  async updateCategory(id: string, dto: UpdateCategoryDto, staffId?: string) {
+    this.verifyMenuPermission(staffId);
+
+    const cat = await this.categoryRepo.findOne({ where: { id } });
+    if (!cat) {
+      throw new NotFoundException(`Không tìm thấy danh mục [${id}] để cập nhật`);
+    }
+
+    if (dto.name !== undefined) {
+      const cleanName = dto.name.trim();
+      if (!cleanName) {
+        throw new BadRequestException('Tên danh mục không được để trống');
+      }
+
+      // Check duplicate name with other categories
+      const allCats = await this.categoryRepo.find();
+      const isDuplicate = allCats.some(
+        (c) => c.id !== id && c.name.toLowerCase() === cleanName.toLowerCase(),
+      );
+      if (isDuplicate) {
+        throw new BadRequestException(`Tên danh mục "${cleanName}" đã tồn tại trong thực đơn`);
+      }
+
+      const oldName = cat.name;
+      cat.name = cleanName;
+
+      // Synchronize categoryName on all dishes referencing this category
+      if (oldName !== cleanName) {
+        await this.dishRepo.update({ categoryId: id }, { categoryName: cleanName });
+      }
+    }
+
+    if (dto.icon !== undefined) {
+      cat.icon = dto.icon.trim() || 'restaurant_menu';
+    }
+
+    if (dto.order !== undefined) {
+      cat.order = Number(dto.order);
+    }
+
+    const saved = await this.categoryRepo.save(cat);
+    const count = await this.dishRepo.count({ where: { categoryId: id, isArchived: false } });
+    return {
+      id: saved.id,
+      name: saved.name,
+      icon: saved.icon,
+      order: saved.order,
+      count,
+    };
+  }
+
+  async deleteCategory(id: string, staffId?: string) {
+    this.verifyMenuPermission(staffId);
+
+    if (id === 'all' || id === 'trending') {
+      throw new BadRequestException('Không thể xóa danh mục hệ thống mặc định.');
+    }
+
+    const cat = await this.categoryRepo.findOne({ where: { id } });
+    if (!cat) {
+      throw new NotFoundException(`Không tìm thấy danh mục [${id}] hoặc đã bị xóa`);
+    }
+
+    // Safe deletion rule: check if any active dish references this category
+    const activeDishCount = await this.dishRepo.count({ where: { categoryId: id, isArchived: false } });
+    if (activeDishCount > 0) {
+      throw new BadRequestException(
+        `Không thể xóa danh mục "${cat.name}" vì vẫn còn ${activeDishCount} món ăn đang thuộc nhóm này. Vui lòng chuyển các món sang danh mục khác trước khi xóa.`,
+      );
+    }
+
+    // Also check if any archived dishes reference this category
+    const totalDishCount = await this.dishRepo.count({ where: { categoryId: id } });
+    if (totalDishCount > 0) {
+      throw new BadRequestException(
+        `Không thể xóa danh mục "${cat.name}" vì có ${totalDishCount} món ăn đang tham chiếu đến danh mục này. Vui lòng chuyển các món sang danh mục khác trước khi xóa.`,
+      );
+    }
+
+    await this.categoryRepo.delete(id);
+    return {
+      success: true,
+      message: `Đã xóa danh mục "${cat.name}" thành công khỏi thực đơn.`,
+    };
   }
 
   async findAll(query: QueryDishDto) {
