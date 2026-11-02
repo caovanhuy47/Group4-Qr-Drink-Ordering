@@ -29,6 +29,12 @@ export const MenuManagementView: React.FC = () => {
   const [dishToDelete, setDishToDelete] = useState<Dish | null>(null);
   const [processingDishId, setProcessingDishId] = useState<string | null>(null);
 
+  // Derive valid category (fallback to 'all' if selected category was deleted)
+  const effectiveCategory =
+    selectedCategory !== 'all' && categories.length > 0 && !categories.some((c) => c.id === selectedCategory)
+      ? 'all'
+      : selectedCategory;
+
   // Active dishes (excluding archived)
   const activeDishes = useMemo(() => dishes.filter((d) => !d.isArchived), [dishes]);
 
@@ -36,11 +42,11 @@ export const MenuManagementView: React.FC = () => {
   const filteredDishes = useMemo(() => {
     return activeDishes.filter((dish) => {
       const matchesCat =
-        selectedCategory === 'all'
+        effectiveCategory === 'all'
           ? true
-          : selectedCategory === 'trending'
+          : effectiveCategory === 'trending'
           ? dish.badge === 'Bán chạy' || dish.badgeType === 'hot'
-          : dish.categoryId === selectedCategory;
+          : dish.categoryId === effectiveCategory;
 
       const matchesSearch =
         searchTerm === '' ||
@@ -56,7 +62,7 @@ export const MenuManagementView: React.FC = () => {
 
       return matchesCat && matchesSearch && matchesAvailability;
     });
-  }, [activeDishes, selectedCategory, searchTerm, availabilityFilter]);
+  }, [activeDishes, effectiveCategory, searchTerm, availabilityFilter]);
 
   // Pagination calculation
   const totalItems = filteredDishes.length;
@@ -180,7 +186,7 @@ export const MenuManagementView: React.FC = () => {
           <div className="flex items-center gap-2 flex-wrap">
             {/* Category Filter */}
             <select
-              value={selectedCategory}
+              value={effectiveCategory}
               onChange={(e) => {
                 setSelectedCategory(e.target.value);
                 setPage(1);

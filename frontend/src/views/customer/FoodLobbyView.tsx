@@ -15,6 +15,18 @@ export const FoodLobbyView: React.FC = () => {
     banners,
   } = useRestaurant();
 
+  // Stable category sorting by order
+  const sortedCategories = [...categories].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+
+  // Derive valid selected category (fallback to 'all' if selected category no longer exists)
+  const effectiveCategory =
+    selectedCategory !== 'all' &&
+    selectedCategory !== 'trending' &&
+    categories.length > 0 &&
+    !categories.some((c) => c.id === selectedCategory)
+      ? 'all'
+      : selectedCategory;
+
   // Filter active dishes (exclude archived)
   const activeDishes = dishes.filter((dish) => !dish.isArchived);
 
@@ -26,11 +38,11 @@ export const FoodLobbyView: React.FC = () => {
       dish.description.toLowerCase().includes(searchTerm.toLowerCase());
 
     const matchesCategory =
-      selectedCategory === 'all'
+      effectiveCategory === 'all'
         ? true
-        : selectedCategory === 'trending'
+        : effectiveCategory === 'trending'
         ? dish.badge === 'Bán chạy' || dish.badge === 'Món hot'
-        : dish.categoryId === selectedCategory;
+        : dish.categoryId === effectiveCategory;
 
     return matchesSearch && matchesCategory;
   });
@@ -97,8 +109,8 @@ export const FoodLobbyView: React.FC = () => {
         {/* 2. CATEGORY FILTER PILLS - Synchronized sticky offset for 0 overlap */}
         <section className="sticky top-[98px] md:top-[64px] z-30 bg-background/95 backdrop-blur-md py-2 -mx-3 sm:-mx-4 px-3 sm:px-4 md:-mx-8 md:px-8 border-b border-border/40 overflow-hidden">
           <div className="flex items-center gap-2 overflow-x-auto no-scrollbar w-full">
-            {categories.map((cat) => {
-              const isActive = selectedCategory === cat.id;
+            {sortedCategories.map((cat) => {
+              const isActive = effectiveCategory === cat.id;
               return (
                 <button
                   key={cat.id}
@@ -121,7 +133,7 @@ export const FoodLobbyView: React.FC = () => {
         </section>
 
         {/* 3. BEST SELLERS ROW (Shown when browsing all and no search) */}
-        {searchTerm === '' && selectedCategory === 'all' && (
+        {searchTerm === '' && effectiveCategory === 'all' && (
           <section className="space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">

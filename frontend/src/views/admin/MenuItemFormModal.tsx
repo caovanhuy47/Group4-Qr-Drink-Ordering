@@ -13,13 +13,17 @@ const DEFAULT_FALLBACK_IMAGE =
 export const MenuItemFormModal: React.FC<MenuItemFormModalProps> = ({ dish, onClose }) => {
   const { categories, saveDish } = useRestaurant();
 
+  const userCategories = categories.filter((c) => c.id !== 'all' && c.id !== 'trending');
+  const initialCatId =
+    dish?.categoryId && userCategories.some((c) => c.id === dish.categoryId)
+      ? dish.categoryId
+      : userCategories[0]?.id || 'main';
+
   const [name, setName] = useState(dish?.name || '');
   const [description, setDescription] = useState(dish?.description || '');
   const [price, setPrice] = useState<number>(dish?.price ?? 35000);
   const [oldPrice, setOldPrice] = useState<number | undefined>(dish?.oldPrice);
-  const [categoryId, setCategoryId] = useState<string>(
-    dish?.categoryId || categories.find((c) => c.id !== 'all' && c.id !== 'trending')?.id || 'main'
-  );
+  const [categoryId, setCategoryId] = useState<string>(initialCatId);
   const [badge, setBadge] = useState<string>(dish?.badge || '');
   const [badgeType, setBadgeType] = useState<'hot' | 'new' | 'veg' | 'special'>(
     dish?.badgeType || 'hot'
@@ -86,6 +90,11 @@ export const MenuItemFormModal: React.FC<MenuItemFormModalProps> = ({ dish, onCl
       /^[a-zA-Z]:\\/.test(trimmedImage)
     ) {
       setErrorMessage('Không dùng đường dẫn file máy cá nhân hoặc blob tạm. Vui lòng dùng URL trực tuyến (https://...).');
+      return;
+    }
+
+    if (!userCategories.some((c) => c.id === categoryId)) {
+      setErrorMessage('Danh mục đã chọn không hợp lệ hoặc vừa bị xóa. Vui lòng chọn lại danh mục.');
       return;
     }
 
