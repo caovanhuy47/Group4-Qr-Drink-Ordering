@@ -168,14 +168,22 @@ export class DishesService implements OnModuleInit {
       order,
     });
 
-    const saved = await this.categoryRepo.save(newCat);
-    return {
-      id: saved.id,
-      name: saved.name,
-      icon: saved.icon,
-      order: saved.order,
-      count: 0,
-    };
+    try {
+      const saved = await this.categoryRepo.save(newCat);
+      return {
+        id: saved.id,
+        name: saved.name,
+        icon: saved.icon,
+        order: saved.order,
+        count: 0,
+      };
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : '';
+      if (errMsg.includes('Duplicate entry') || (err as { code?: string })?.code === 'ER_DUP_ENTRY') {
+        throw new BadRequestException(`Tên danh mục "${cleanName}" đã tồn tại trong thực đơn`);
+      }
+      throw err;
+    }
   }
 
   async updateCategory(id: string, dto: UpdateCategoryDto, staffId?: string) {
@@ -218,15 +226,23 @@ export class DishesService implements OnModuleInit {
       cat.order = Number(dto.order);
     }
 
-    const saved = await this.categoryRepo.save(cat);
-    const count = await this.dishRepo.count({ where: { categoryId: id, isArchived: false } });
-    return {
-      id: saved.id,
-      name: saved.name,
-      icon: saved.icon,
-      order: saved.order,
-      count,
-    };
+    try {
+      const saved = await this.categoryRepo.save(cat);
+      const count = await this.dishRepo.count({ where: { categoryId: id, isArchived: false } });
+      return {
+        id: saved.id,
+        name: saved.name,
+        icon: saved.icon,
+        order: saved.order,
+        count,
+      };
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : '';
+      if (errMsg.includes('Duplicate entry') || (err as { code?: string })?.code === 'ER_DUP_ENTRY') {
+        throw new BadRequestException(`Tên danh mục "${dto.name}" đã tồn tại trong thực đơn`);
+      }
+      throw err;
+    }
   }
 
   async deleteCategory(id: string, staffId?: string) {
@@ -317,13 +333,12 @@ export class DishesService implements OnModuleInit {
     }
 
     // Validate category existence
-    let category = await this.categoryRepo.findOne({ where: { id: dto.categoryId } });
-    if (!category && dto.categoryId !== 'all' && dto.categoryId !== 'trending') {
-      // Default to main category if not found
-      category = await this.categoryRepo.findOne({ where: { id: 'main' } });
+    const category = await this.categoryRepo.findOne({ where: { id: dto.categoryId } });
+    if (!category || dto.categoryId === 'all' || dto.categoryId === 'trending') {
+      throw new BadRequestException(`Danh mục món [${dto.categoryId}] không tồn tại trên hệ thống.`);
     }
 
-    const categoryName = category ? category.name : 'Món chính';
+    const categoryName = category.name;
     const dishId = dto.id?.trim() || `dish-${Date.now()}`;
 
     const newDish = this.dishRepo.create({
@@ -333,7 +348,7 @@ export class DishesService implements OnModuleInit {
       price: Math.max(0, Math.floor(dto.price)),
       oldPrice: dto.oldPrice ? Math.max(0, Math.floor(dto.oldPrice)) : null,
       image: dto.image.trim(),
-      categoryId: category ? category.id : 'main',
+      categoryId: category.id,
       categoryName,
       badge: dto.badge?.trim() || null,
       badgeType: dto.badgeType || null,
@@ -380,10 +395,11 @@ export class DishesService implements OnModuleInit {
 
     if (dto.categoryId !== undefined) {
       const cat = await this.categoryRepo.findOne({ where: { id: dto.categoryId } });
-      if (cat) {
-        existing.categoryId = cat.id;
-        existing.categoryName = cat.name;
+      if (!cat || dto.categoryId === 'all' || dto.categoryId === 'trending') {
+        throw new BadRequestException(`Danh mục món [${dto.categoryId}] không tồn tại trên hệ thống.`);
       }
+      existing.categoryId = cat.id;
+      existing.categoryName = cat.name;
     }
 
     if (dto.badge !== undefined) {

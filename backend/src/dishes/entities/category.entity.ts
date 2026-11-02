@@ -5,7 +5,7 @@ export class Category {
   @PrimaryColumn({ type: 'varchar', length: 50 })
   id: string;
 
-  @Column({ type: 'varchar', length: 100 })
+  @Column({ type: 'varchar', length: 100, unique: true })
   name: string;
 
   @Column({ type: 'varchar', length: 50, default: 'restaurant_menu' })
