@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import type { Category } from '../../types/restaurant';
 import { useRestaurant } from '../../contexts/useRestaurant';
 import { AdminLayout } from '../../components/admin/AdminLayout';
@@ -11,6 +11,7 @@ export const CategoryManagementView: React.FC = () => {
     deleteCategory,
     refreshCategories,
     dishes,
+    setViewRoute,
   } = useRestaurant();
 
   const [searchTerm, setSearchTerm] = useState('');
@@ -33,6 +34,19 @@ export const CategoryManagementView: React.FC = () => {
   const [catToDelete, setCatToDelete] = useState<Category | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  // Keyboard Escape listener for modals
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (editingCategory && !isEditSubmitting) setEditingCategory(null);
+        if (catToDelete && !isDeleting) setCatToDelete(null);
+        if (isAdding && !isSubmitting) setIsAdding(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [editingCategory, isEditSubmitting, catToDelete, isDeleting, isAdding, isSubmitting]);
 
   const iconsList = [
     'restaurant_menu',
@@ -590,10 +604,22 @@ export const CategoryManagementView: React.FC = () => {
                   onClick={() => setCatToDelete(null)}
                   className="px-4 py-2.5 rounded-xl bg-surface-container hover:bg-surface-container-high text-on-surface text-xs font-bold transition-colors disabled:opacity-50 min-h-[38px]"
                 >
-                  {hasReferencingDishes ? 'Đã hiểu' : 'Hủy bỏ'}
+                  {hasReferencingDishes ? 'Đóng' : 'Hủy bỏ'}
                 </button>
 
-                {!hasReferencingDishes && (
+                {hasReferencingDishes ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCatToDelete(null);
+                      setViewRoute('admin/menu');
+                    }}
+                    className="px-4 py-2.5 rounded-xl bg-primary hover:bg-primary-hover text-on-primary text-xs font-bold transition-colors min-h-[38px] flex items-center gap-1.5 shadow-xs"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">restaurant_menu</span>
+                    <span>Đến Quản lý món</span>
+                  </button>
+                ) : (
                   <button
                     type="button"
                     disabled={isDeleting}
