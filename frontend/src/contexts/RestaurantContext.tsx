@@ -25,6 +25,7 @@ import {
 } from '../data/mockData';
 import { reportsApi } from '../services/reportsApi';
 import { dishesApi } from '../services/dishesApi';
+import { bannersApi } from '../services/bannersApi';
 import { RestaurantContext } from './restaurantContextDef';
 
 const routeToHash: Record<ViewRoute, string> = {
@@ -293,7 +294,9 @@ export const RestaurantProvider: React.FC<{ children: ReactNode }> = ({ children
 
   const [dishes, setDishes] = useState<Dish[]>(INITIAL_DISHES);
   const [categories, setCategories] = useState<Category[]>(INITIAL_CATEGORIES);
+  const [banners, setBanners] = useState<Banner[]>(INITIAL_BANNERS);
   const [isDishesLoading, setIsDishesLoading] = useState<boolean>(true);
+  const [isBannersLoading, setIsBannersLoading] = useState<boolean>(false);
   const [dishesError, setDishesError] = useState<string>('');
 
   const refreshDishes = useCallback(async () => {
@@ -319,11 +322,13 @@ export const RestaurantProvider: React.FC<{ children: ReactNode }> = ({ children
     Promise.all([
       dishesApi.fetchDishes({ includeArchived: true }),
       dishesApi.fetchCategories(),
+      bannersApi.fetchBanners(true),
     ])
-      .then(([liveDishes, liveCategories]) => {
+      .then(([liveDishes, liveCategories, liveBanners]) => {
         if (!ignore) {
           setDishes(liveDishes);
           setCategories(liveCategories);
+          setBanners(liveBanners);
           setDishesError('');
           setIsDishesLoading(false);
         }
@@ -340,7 +345,19 @@ export const RestaurantProvider: React.FC<{ children: ReactNode }> = ({ children
       ignore = true;
     };
   }, []);
-  const [banners, setBanners] = useState<Banner[]>(INITIAL_BANNERS);
+
+  const refreshBanners = useCallback(async () => {
+    setIsBannersLoading(true);
+    try {
+      const data = await bannersApi.fetchBanners(true);
+      setBanners(data);
+    } catch (err) {
+      console.warn('Lỗi tải danh sách banner:', err);
+    } finally {
+      setIsBannersLoading(false);
+    }
+  }, []);
+
   const [staffList, setStaffList] = useState<Staff[]>(INITIAL_STAFF);
   const [currentUser, setCurrentUser] = useState<Staff | null>(INITIAL_STAFF[0]);
 
@@ -854,10 +871,79 @@ export const RestaurantProvider: React.FC<{ children: ReactNode }> = ({ children
     }
   };
 
-  const toggleBannerActive = (bannerId: string) => {
-    setBanners((prev) =>
-      prev.map((b) => (b.id === bannerId ? { ...b, isActive: !b.isActive } : b))
-    );
+  const saveBanner = async (bannerData: Partial<Banner>): Promise<boolean> => {
+    const staffId = currentUser?.id || 'staff-1';
+    try {
+      const exists = bannerData.id && banners.some((b) => b.id === bannerData.id);
+      let saved: Banner;
+      if (exists && bannerData.id) {
+        saved = await bannersApi.updateBanner(bannerData.id, bannerData, staffId);
+        setBanners((prev) => prev.map((b) => (b.id === bannerData.id ? saved : b)));
+        showToast(`Đã cập nhật banner "${saved.adminName || saved.title}" thành công!`, 'success');
+      } else {
+        saved = await bannersApi.createBanner(bannerData, staffId);
+        setBanners((prev) => [...prev, saved].sort((a, b) => (a.displayOrder ?? 0) - (b.displayOrder ?? 0)));
+        showToast(`Đã thêm banner "${saved.adminName || saved.title}" thành công!`, 'success');
+      }
+      return true;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Lỗi khi lưu banner';
+      showToast(msg, 'error');
+      throw err;
+    }
+  };
+
+  const toggleBannerActive = async (bannerId: string): Promise<boolean> => {
+    const staffId = currentUser?.id || 'staff-1';
+    try {
+      const updated = await bannersApi.toggleBannerStatus(bannerId, staffId);
+      setBanners((prev) => prev.map((b) => (b.id === bannerId ? updated : b)));
+      showToast(
+        updated.isActive
+          ? `Đã hiển thị banner "${updated.adminName || updated.title}" trên sảnh khách`
+          : `Đã tạm ẩn banner "${updated.adminName || updated.title}"`,
+        'info'
+      );
+      return true;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Lỗi khi đổi trạng thái banner';
+      showToast(msg, 'error');
+      return false;
+    }
+  };
+
+  const reorderBanners = async (items: { id: string; displayOrder: number }[]): Promise<boolean> => {
+    const staffId = currentUser?.id || 'staff-1';
+    try {
+      await bannersApi.reorderBanners(items, staffId);
+      setBanners((prev) => {
+        const orderMap = new Map(items.map((i) => [i.id, i.displayOrder]));
+        return [...prev]
+          .map((b) => (orderMap.has(b.id) ? { ...b, displayOrder: orderMap.get(b.id)! } : b))
+          .sort((a, b) => (a.displayOrder ?? 0) - (b.displayOrder ?? 0));
+      });
+      showToast('Đã lưu thứ tự hiển thị banner thành công!', 'success');
+      return true;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Lỗi khi sắp xếp thứ tự banner';
+      showToast(msg, 'error');
+      return false;
+    }
+  };
+
+  const deleteBanner = async (bannerId: string): Promise<boolean> => {
+    const staffId = currentUser?.id || 'staff-1';
+    try {
+      const target = banners.find((b) => b.id === bannerId);
+      await bannersApi.deleteBanner(bannerId, staffId);
+      setBanners((prev) => prev.filter((b) => b.id !== bannerId));
+      showToast(`Đã xóa banner "${target?.adminName || target?.title || bannerId}" thành công!`, 'success');
+      return true;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Lỗi khi xóa banner';
+      showToast(msg, 'error');
+      return false;
+    }
   };
 
   const loginAs = (staff: Staff) => {
@@ -928,7 +1014,12 @@ export const RestaurantProvider: React.FC<{ children: ReactNode }> = ({ children
         deleteCategory,
         refreshCategories,
         banners,
+        refreshBanners,
+        saveBanner,
         toggleBannerActive,
+        reorderBanners,
+        deleteBanner,
+        isBannersLoading,
         staffList,
         currentUser,
         loginAs,

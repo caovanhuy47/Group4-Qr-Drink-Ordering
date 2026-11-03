@@ -80,7 +80,12 @@ export interface RestaurantContextType {
   refreshCategories: () => Promise<void>;
 
   banners: Banner[];
-  toggleBannerActive: (bannerId: string) => void;
+  refreshBanners: () => Promise<void>;
+  saveBanner: (banner: Partial<Banner>) => Promise<boolean>;
+  toggleBannerActive: (bannerId: string) => Promise<boolean>;
+  reorderBanners: (items: { id: string; displayOrder: number }[]) => Promise<boolean>;
+  deleteBanner: (bannerId: string) => Promise<boolean>;
+  isBannersLoading: boolean;
 
   staffList: Staff[];
   currentUser: Staff | null;

@@ -90,17 +90,26 @@ export interface Order {
   notes?: string;
 }
 
+export type BannerLinkType = 'none' | 'dish' | 'category' | 'custom';
+
 export interface Banner {
   id: string;
+  adminName?: string;
   tag: string;
   title: string;
   description: string;
-  discountBadge: string;
-  priceNote: string;
+  discountBadge?: string;
+  priceNote?: string;
   ctaText: string;
   bgGradient: string;
   imageUrl?: string;
+  mobileImageUrl?: string;
+  linkType?: BannerLinkType;
+  linkTargetId?: string;
+  displayOrder?: number;
   isActive: boolean;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export type StaffRole = 'admin' | 'waiter' | 'kitchen' | 'cashier';

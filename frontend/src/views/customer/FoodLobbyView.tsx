@@ -1,6 +1,7 @@
 import React from 'react';
 import { useRestaurant } from '../../contexts/useRestaurant';
 import { CustomerHeader } from '../../components/customer/CustomerHeader';
+import { HeroBannerCarousel } from '../../components/customer/HeroBannerCarousel';
 import { DishCard } from '../../components/customer/DishCard';
 import { FloatingCartBar } from '../../components/customer/FloatingCartBar';
 
@@ -59,51 +60,7 @@ export const FoodLobbyView: React.FC = () => {
       <main className="max-w-[1200px] mx-auto w-full px-4 md:px-8 py-3 md:py-4 space-y-6 flex-1">
         {/* 1. HERO BANNER CAROUSEL */}
         {searchTerm === '' && selectedCategory === 'all' && (
-          <section className="relative overflow-hidden rounded-2xl shadow-xs">
-            <div className="flex gap-3 overflow-x-auto no-scrollbar snap-x snap-mandatory pb-1">
-              {banners.map((banner) => (
-                <div
-                  key={banner.id}
-                  className={`snap-center shrink-0 w-[94%] sm:w-[85%] lg:w-[680px] bg-gradient-to-r ${banner.bgGradient} rounded-2xl p-4 md:p-6 text-on-primary flex flex-col justify-between shadow-warm-sm relative overflow-hidden min-h-[175px] md:min-h-[195px]`}
-                >
-                  {/* Background Ambient Circle */}
-                  <div className="absolute -right-8 -bottom-8 w-44 h-44 rounded-full bg-secondary-fixed/20 pointer-events-none" />
-
-                  <div className="relative z-10 flex items-start justify-between">
-                    <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-surface-container-lowest/25 backdrop-blur-sm text-[11px] font-bold uppercase tracking-wider text-secondary-fixed">
-                      <span className="material-symbols-outlined text-[13px]">bolt</span>
-                      {banner.tag}
-                    </span>
-                    <span className="font-headline font-bold text-lg md:text-xl text-secondary-fixed">
-                      {banner.discountBadge}
-                    </span>
-                  </div>
-
-                  <div className="relative z-10 my-2">
-                    <h3 className="font-headline font-bold text-lg md:text-2xl leading-tight text-white line-clamp-1">
-                      {banner.title}
-                    </h3>
-                    <p className="text-xs md:text-sm text-on-primary-container leading-relaxed mt-1 line-clamp-2">
-                      {banner.description}
-                    </p>
-                  </div>
-
-                  <div className="relative z-10 flex items-center justify-between pt-1">
-                    <button
-                      type="button"
-                      className="inline-flex items-center gap-1 px-4 py-1.5 rounded-lg bg-surface-container-lowest text-primary font-bold text-xs shadow-xs hover:bg-surface-container active:scale-95 transition-all"
-                    >
-                      <span>{banner.ctaText}</span>
-                      <span className="material-symbols-outlined text-[15px]">arrow_forward</span>
-                    </button>
-                    <span className="text-xs text-surface-container-highest/90 font-medium">
-                      {banner.priceNote}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
+          <HeroBannerCarousel banners={banners} />
         )}
 
         {/* 2. CATEGORY FILTER PILLS - Synchronized sticky offset for 0 overlap */}
