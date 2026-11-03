@@ -323,7 +323,11 @@ export const BannerManagementView: React.FC = () => {
             <div>
               <span className="text-xs text-on-surface-variant font-medium">Tổng số banner</span>
               <h4 className="font-headline font-black text-2xl text-on-surface mt-0.5">
-                {banners.length}
+                {isBannersLoading ? (
+                  <span className="inline-block h-7 w-10 bg-surface-container rounded-lg animate-pulse" />
+                ) : (
+                  banners.length
+                )}
               </h4>
             </div>
             <div className="w-10 h-10 rounded-xl bg-primary-soft text-primary flex items-center justify-center">
@@ -335,7 +339,11 @@ export const BannerManagementView: React.FC = () => {
             <div>
               <span className="text-xs text-tertiary font-medium">Đang hiển thị trên sảnh</span>
               <h4 className="font-headline font-black text-2xl text-tertiary mt-0.5">
-                {activeCount}
+                {isBannersLoading ? (
+                  <span className="inline-block h-7 w-10 bg-surface-container rounded-lg animate-pulse" />
+                ) : (
+                  activeCount
+                )}
               </h4>
             </div>
             <div className="w-10 h-10 rounded-xl bg-tertiary-soft text-tertiary flex items-center justify-center">
@@ -347,7 +355,11 @@ export const BannerManagementView: React.FC = () => {
             <div>
               <span className="text-xs text-on-surface-variant font-medium">Đang tạm ẩn</span>
               <h4 className="font-headline font-black text-2xl text-on-surface-variant mt-0.5">
-                {inactiveCount}
+                {isBannersLoading ? (
+                  <span className="inline-block h-7 w-10 bg-surface-container rounded-lg animate-pulse" />
+                ) : (
+                  inactiveCount
+                )}
               </h4>
             </div>
             <div className="w-10 h-10 rounded-xl bg-surface-container text-on-surface-variant flex items-center justify-center">
@@ -448,7 +460,26 @@ export const BannerManagementView: React.FC = () => {
         </div>
 
         {/* Banners List */}
-        {filteredBanners.length === 0 ? (
+        {isBannersLoading ? (
+          <div className="space-y-3">
+            {[...Array(2)].map((_, i) => (
+              <div
+                key={i}
+                className="bg-surface-container-lowest border border-border rounded-2xl p-4 md:p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 animate-pulse"
+              >
+                <div className="flex items-center gap-3.5 flex-1 min-w-0">
+                  <div className="w-24 md:w-32 h-16 md:h-20 rounded-xl bg-surface-container-high/60 shrink-0" />
+                  <div className="space-y-2 flex-1">
+                    <div className="h-4 w-36 bg-surface-container-high/60 rounded" />
+                    <div className="h-3 w-56 bg-surface-container/60 rounded" />
+                    <div className="h-4 w-24 bg-surface-container-high/60 rounded-md" />
+                  </div>
+                </div>
+                <div className="h-8 w-24 bg-surface-container-high/60 rounded-full" />
+              </div>
+            ))}
+          </div>
+        ) : filteredBanners.length === 0 ? (
           <div className="bg-surface-container-lowest border border-border rounded-2xl p-10 text-center space-y-3">
             <div className="w-14 h-14 rounded-2xl bg-surface-container mx-auto flex items-center justify-center text-on-surface-variant">
               <span className="material-symbols-outlined text-[28px]">image_not_supported</span>

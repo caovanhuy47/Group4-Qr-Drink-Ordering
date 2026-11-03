@@ -397,7 +397,11 @@ export const StaffRbacView: React.FC = () => {
             <div>
               <span className="text-xs text-on-surface-variant font-medium">Tổng nhân sự</span>
               <h4 className="font-headline font-black text-2xl text-on-surface mt-0.5">
-                {staffList.length}
+                {isStaffLoading ? (
+                  <span className="inline-block h-7 w-10 bg-surface-container rounded-lg animate-pulse" />
+                ) : (
+                  staffList.length
+                )}
               </h4>
             </div>
             <div className="w-10 h-10 rounded-xl bg-primary-soft text-primary flex items-center justify-center">
@@ -409,7 +413,11 @@ export const StaffRbacView: React.FC = () => {
             <div>
               <span className="text-xs text-tertiary font-medium">Đang hoạt động</span>
               <h4 className="font-headline font-black text-2xl text-tertiary mt-0.5">
-                {activeCount}
+                {isStaffLoading ? (
+                  <span className="inline-block h-7 w-10 bg-surface-container rounded-lg animate-pulse" />
+                ) : (
+                  activeCount
+                )}
               </h4>
             </div>
             <div className="w-10 h-10 rounded-xl bg-tertiary-soft text-tertiary flex items-center justify-center">
@@ -421,7 +429,11 @@ export const StaffRbacView: React.FC = () => {
             <div>
               <span className="text-xs text-on-surface-variant font-medium">Đang bị khóa</span>
               <h4 className="font-headline font-black text-2xl text-error mt-0.5">
-                {suspendedCount}
+                {isStaffLoading ? (
+                  <span className="inline-block h-7 w-10 bg-surface-container rounded-lg animate-pulse" />
+                ) : (
+                  suspendedCount
+                )}
               </h4>
             </div>
             <div className="w-10 h-10 rounded-xl bg-error-container/40 text-error flex items-center justify-center">
@@ -522,7 +534,36 @@ export const StaffRbacView: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/60">
-                {filteredStaff.length === 0 ? (
+                {isStaffLoading ? (
+                  [...Array(4)].map((_, i) => (
+                    <tr key={i} className="animate-pulse">
+                      <td className="py-3 px-4">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-9 h-9 rounded-full bg-surface-container-high/60 shrink-0" />
+                          <div className="space-y-1.5 flex-1">
+                            <div className="h-4 w-28 bg-surface-container-high/60 rounded" />
+                            <div className="h-3 w-16 bg-surface-container/60 rounded" />
+                          </div>
+                        </div>
+                      </td>
+                      <td className="py-3 px-4">
+                        <div className="h-6 w-20 bg-surface-container-high/60 rounded-full" />
+                      </td>
+                      <td className="py-3 px-4">
+                        <div className="h-4 w-32 bg-surface-container/60 rounded" />
+                      </td>
+                      <td className="py-3 px-4">
+                        <div className="h-4 w-24 bg-surface-container/60 rounded" />
+                      </td>
+                      <td className="py-3 px-4">
+                        <div className="h-6 w-24 bg-surface-container-high/60 rounded-full" />
+                      </td>
+                      <td className="py-3 px-4 text-right">
+                        <div className="h-7 w-20 bg-surface-container-high/60 rounded-lg ml-auto" />
+                      </td>
+                    </tr>
+                  ))
+                ) : filteredStaff.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="py-8 text-center text-on-surface-variant">
                       Không tìm thấy nhân viên phù hợp bộ lọc

@@ -17,10 +17,6 @@ import type {
   TableOrderItem,
 } from '../types/restaurant';
 import {
-  INITIAL_CATEGORIES,
-  INITIAL_DISHES,
-  INITIAL_BANNERS,
-  INITIAL_STAFF,
   INITIAL_TABLES,
 } from '../data/mockData';
 import { reportsApi } from '../services/reportsApi';
@@ -185,14 +181,14 @@ function saveActiveOrderForTable(table: string, order: Order | null): void {
   }
 }
 
-function getSavedStaffSession(): Staff {
+function getSavedStaffSession(): Staff | null {
   try {
     const saved = localStorage.getItem('huycv_staff_session');
     if (saved) {
       return JSON.parse(saved);
     }
   } catch {}
-  return INITIAL_STAFF[0];
+  return null;
 }
 
 export const RestaurantProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
@@ -303,14 +299,17 @@ export const RestaurantProvider: React.FC<{ children: ReactNode }> = ({ children
   const [selectedDishForDetail, setSelectedDishForDetail] = useState<Dish | null>(null);
   const [isCartDrawerOpen, setIsCartDrawerOpen] = useState<boolean>(false);
 
-  const [dishes, setDishes] = useState<Dish[]>(INITIAL_DISHES);
-  const [categories, setCategories] = useState<Category[]>(INITIAL_CATEGORIES);
-  const [banners, setBanners] = useState<Banner[]>(INITIAL_BANNERS);
+  const [dishes, setDishes] = useState<Dish[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [banners, setBanners] = useState<Banner[]>([]);
   const [isDishesLoading, setIsDishesLoading] = useState<boolean>(true);
-  const [isBannersLoading, setIsBannersLoading] = useState<boolean>(false);
+  const [isCategoriesLoading, setIsCategoriesLoading] = useState<boolean>(true);
+  const [isBannersLoading, setIsBannersLoading] = useState<boolean>(true);
   const [dishesError, setDishesError] = useState<string>('');
 
   const refreshDishes = useCallback(async () => {
+    setIsDishesLoading(true);
+    setDishesError('');
     try {
       const [liveDishes, liveCategories] = await Promise.all([
         dishesApi.fetchDishes({ includeArchived: true }),
@@ -318,38 +317,65 @@ export const RestaurantProvider: React.FC<{ children: ReactNode }> = ({ children
       ]);
       setDishes(liveDishes);
       setCategories(liveCategories);
-      setDishesError('');
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Không thể tải danh sách món ăn từ máy chủ';
       setDishesError(msg);
-      console.warn('Could not load dishes from API, kept fallback:', err);
+      console.warn('Could not load dishes from API:', err);
     } finally {
       setIsDishesLoading(false);
     }
   }, []);
 
   const [currentUser, setCurrentUser] = useState<Staff | null>(() => getSavedStaffSession());
-  const [staffList, setStaffList] = useState<Staff[]>(INITIAL_STAFF);
-  const [isStaffLoading, setIsStaffLoading] = useState<boolean>(false);
+  const [staffList, setStaffList] = useState<Staff[]>([]);
+  const [isStaffLoading, setIsStaffLoading] = useState<boolean>(true);
+  const [isAuthChecking, setIsAuthChecking] = useState<boolean>(() => {
+    const hash = typeof window !== 'undefined' ? window.location.hash || '' : '';
+    return hash.includes('staff') || hash.includes('admin');
+  });
 
   useEffect(() => {
     let ignore = false;
     const sessionUser = getSavedStaffSession();
     const initialStaffId = sessionUser?.id || 'staff-1';
+
     Promise.all([
       dishesApi.fetchDishes({ includeArchived: true }),
       dishesApi.fetchCategories(),
       bannersApi.fetchBanners(true),
-      staffApi.fetchStaffList(initialStaffId).catch(() => INITIAL_STAFF),
+      sessionUser ? staffApi.fetchStaffList(initialStaffId).catch(() => []) : Promise.resolve([]),
     ])
       .then(([liveDishes, liveCategories, liveBanners, liveStaff]) => {
         if (!ignore) {
           setDishes(liveDishes);
           setCategories(liveCategories);
           setBanners(liveBanners);
-          setStaffList(liveStaff);
+          if (liveStaff.length > 0) {
+            setStaffList(liveStaff);
+            if (sessionUser) {
+              const liveCurrent = liveStaff.find((s) => s.id === sessionUser.id);
+              if (liveCurrent) {
+                if (liveCurrent.status === 'suspended') {
+                  setCurrentUser(null);
+                  try {
+                    localStorage.removeItem('huycv_staff_session');
+                  } catch {}
+                  showToast('Tài khoản đã bị tạm khóa. Vui lòng liên hệ Quản lý.', 'error');
+                } else {
+                  setCurrentUser(liveCurrent);
+                  try {
+                    localStorage.setItem('huycv_staff_session', JSON.stringify(liveCurrent));
+                  } catch {}
+                }
+              }
+            }
+          }
           setDishesError('');
           setIsDishesLoading(false);
+          setIsCategoriesLoading(false);
+          setIsBannersLoading(false);
+          setIsStaffLoading(false);
+          setIsAuthChecking(false);
         }
       })
       .catch((err) => {
@@ -357,6 +383,10 @@ export const RestaurantProvider: React.FC<{ children: ReactNode }> = ({ children
           const msg = err instanceof Error ? err.message : 'Không thể tải dữ liệu khởi tạo từ máy chủ';
           setDishesError(msg);
           setIsDishesLoading(false);
+          setIsCategoriesLoading(false);
+          setIsBannersLoading(false);
+          setIsStaffLoading(false);
+          setIsAuthChecking(false);
         }
       });
 
@@ -854,11 +884,14 @@ export const RestaurantProvider: React.FC<{ children: ReactNode }> = ({ children
   };
 
   const refreshCategories = useCallback(async () => {
+    setIsCategoriesLoading(true);
     try {
       const liveCategories = await dishesApi.fetchCategories();
       setCategories(liveCategories);
     } catch (err) {
       console.warn('Could not refresh categories:', err);
+    } finally {
+      setIsCategoriesLoading(false);
     }
   }, []);
 
@@ -1156,6 +1189,7 @@ export const RestaurantProvider: React.FC<{ children: ReactNode }> = ({ children
         saveDish,
         deleteDish,
         categories,
+        isCategoriesLoading,
         addCategory,
         updateCategory,
         deleteCategory,
@@ -1170,6 +1204,7 @@ export const RestaurantProvider: React.FC<{ children: ReactNode }> = ({ children
         staffList,
         currentUser,
         isStaffLoading,
+        isAuthChecking,
         refreshStaffList,
         loginAs,
         loginWithCredentials,

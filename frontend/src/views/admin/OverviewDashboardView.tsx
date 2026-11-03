@@ -194,9 +194,13 @@ export const OverviewDashboardView: React.FC = () => {
               <span className="material-symbols-outlined text-[20px] text-primary">payments</span>
             </div>
             <div className="flex items-baseline gap-1">
-              <span className="font-headline font-black text-2xl lg:text-3xl text-primary">
-                {isLoading ? '...' : `${(data?.totalRevenue || 0).toLocaleString('vi-VN')}đ`}
-              </span>
+              {isLoading ? (
+                <span className="inline-block h-8 w-28 bg-surface-container rounded-lg animate-pulse" />
+              ) : (
+                <span className="font-headline font-black text-2xl lg:text-3xl text-primary">
+                  {`${(data?.totalRevenue || 0).toLocaleString('vi-VN')}đ`}
+                </span>
+              )}
             </div>
             <p className="text-[11px] text-on-surface-variant">
               Chỉ tính các lượt đã phục vụ & thu đủ tiền
@@ -213,10 +217,16 @@ export const OverviewDashboardView: React.FC = () => {
               <span className="material-symbols-outlined text-[20px] text-secondary">receipt</span>
             </div>
             <div className="flex items-baseline gap-1">
-              <span className="font-headline font-black text-2xl lg:text-3xl text-on-surface">
-                {isLoading ? '...' : data?.totalPaidSessions || 0}
-              </span>
-              <span className="text-xs text-on-surface-variant font-medium">lượt bàn</span>
+              {isLoading ? (
+                <span className="inline-block h-8 w-16 bg-surface-container rounded-lg animate-pulse" />
+              ) : (
+                <>
+                  <span className="font-headline font-black text-2xl lg:text-3xl text-on-surface">
+                    {data?.totalPaidSessions || 0}
+                  </span>
+                  <span className="text-xs text-on-surface-variant font-medium">lượt bàn</span>
+                </>
+              )}
             </div>
             <p className="text-[11px] text-on-surface-variant">
               Xem chi tiết trong Lịch sử thu tiền ➔
@@ -230,10 +240,16 @@ export const OverviewDashboardView: React.FC = () => {
               <span className="material-symbols-outlined text-[20px] text-tertiary">restaurant</span>
             </div>
             <div className="flex items-baseline gap-1">
-              <span className="font-headline font-black text-2xl lg:text-3xl text-tertiary">
-                {isLoading ? '...' : data?.totalItemsSold || 0}
-              </span>
-              <span className="text-xs text-on-surface-variant font-medium">phần</span>
+              {isLoading ? (
+                <span className="inline-block h-8 w-16 bg-surface-container rounded-lg animate-pulse" />
+              ) : (
+                <>
+                  <span className="font-headline font-black text-2xl lg:text-3xl text-tertiary">
+                    {data?.totalItemsSold || 0}
+                  </span>
+                  <span className="text-xs text-on-surface-variant font-medium">phần</span>
+                </>
+              )}
             </div>
             <p className="text-[11px] text-on-surface-variant">
               Tổng số lượng các món trong lượt đã thu
@@ -343,7 +359,20 @@ export const OverviewDashboardView: React.FC = () => {
             </div>
 
             <div className="divide-y divide-border/60">
-              {displayWaitingTables.length === 0 ? (
+              {isLoading ? (
+                [...Array(2)].map((_, i) => (
+                  <div key={i} className="py-2.5 flex items-center justify-between gap-3 text-xs animate-pulse">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-lg bg-surface-container" />
+                      <div className="space-y-1.5">
+                        <div className="h-3.5 w-16 bg-surface-container rounded" />
+                        <div className="h-2.5 w-32 bg-surface-container-low rounded" />
+                      </div>
+                    </div>
+                    <div className="h-6 w-16 bg-surface-container rounded" />
+                  </div>
+                ))
+              ) : displayWaitingTables.length === 0 ? (
                 <div className="py-8 text-center text-xs text-on-surface-variant space-y-1">
                   <span className="material-symbols-outlined text-[26px] text-tertiary block mx-auto">task_alt</span>
                   <p className="font-semibold text-on-surface">Không có bàn nào đang chờ phục vụ</p>
@@ -414,7 +443,16 @@ export const OverviewDashboardView: React.FC = () => {
           </div>
 
           {/* SVG Bar / Area Chart */}
-          {(!data || data.revenueChartData.length === 0) ? (
+          {isLoading ? (
+            <div className="h-48 flex items-end justify-between gap-3 px-4 pb-4 animate-pulse">
+              {[40, 65, 30, 80, 50, 95, 45, 70].map((h, i) => (
+                <div key={i} className="flex-1 flex flex-col items-center gap-2">
+                  <div style={{ height: `${h}%` }} className="w-full max-w-[36px] bg-surface-container-high/50 rounded-t-lg" />
+                  <div className="h-2.5 w-8 bg-surface-container rounded" />
+                </div>
+              ))}
+            </div>
+          ) : (!data || data.revenueChartData.length === 0) ? (
             <div className="h-48 flex items-center justify-center text-xs text-on-surface-variant">
               Chưa có dữ liệu thu tiền trong kỳ này
             </div>
@@ -480,7 +518,22 @@ export const OverviewDashboardView: React.FC = () => {
               <span className="text-xs text-on-surface-variant">Theo số phần đã thu tiền</span>
             </div>
 
-            {(!data || data.topSellingDishes.length === 0) ? (
+            {isLoading ? (
+              <div className="divide-y divide-border/60">
+                {[...Array(3)].map((_, i) => (
+                  <div key={i} className="py-2.5 flex items-center justify-between text-xs animate-pulse">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-6 h-6 rounded-full bg-surface-container" />
+                      <div className="space-y-1">
+                        <div className="h-3.5 w-24 bg-surface-container rounded" />
+                        <div className="h-2.5 w-16 bg-surface-container-low rounded" />
+                      </div>
+                    </div>
+                    <div className="h-4 w-12 bg-surface-container rounded" />
+                  </div>
+                ))}
+              </div>
+            ) : (!data || data.topSellingDishes.length === 0) ? (
               <p className="text-xs text-on-surface-variant py-8 text-center">Chưa có dữ liệu món trong kỳ</p>
             ) : (
               <div className="divide-y divide-border/60">
@@ -521,7 +574,19 @@ export const OverviewDashboardView: React.FC = () => {
               </button>
             </div>
 
-            {(!data || data.recentPaidSessions.length === 0) ? (
+            {isLoading ? (
+              <div className="divide-y divide-border/60">
+                {[...Array(3)].map((_, i) => (
+                  <div key={i} className="py-2.5 flex items-center justify-between text-xs animate-pulse">
+                    <div className="space-y-1">
+                      <div className="h-4 w-24 bg-surface-container rounded" />
+                      <div className="h-3 w-32 bg-surface-container-low rounded" />
+                    </div>
+                    <div className="h-5 w-16 bg-surface-container rounded" />
+                  </div>
+                ))}
+              </div>
+            ) : (!data || data.recentPaidSessions.length === 0) ? (
               <p className="text-xs text-on-surface-variant py-8 text-center">Chưa có lượt thu tiền nào</p>
             ) : (
               <div className="divide-y divide-border/60">

@@ -74,6 +74,7 @@ export interface RestaurantContextType {
   deleteDish: (dishId: string) => Promise<boolean>;
 
   categories: Category[];
+  isCategoriesLoading: boolean;
   addCategory: (name: string, icon: string, order?: number) => Promise<{ success: boolean; message: string }>;
   updateCategory: (id: string, name: string, icon: string, order?: number) => Promise<{ success: boolean; message: string }>;
   deleteCategory: (catId: string) => Promise<{ success: boolean; message: string }>;
@@ -90,6 +91,7 @@ export interface RestaurantContextType {
   staffList: Staff[];
   currentUser: Staff | null;
   isStaffLoading: boolean;
+  isAuthChecking: boolean;
   refreshStaffList: () => Promise<void>;
   loginAs: (staff: Staff) => void;
   loginWithCredentials: (username: string, password: string) => Promise<{ success: boolean; message: string }>;

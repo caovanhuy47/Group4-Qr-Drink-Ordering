@@ -105,7 +105,21 @@
     </script>
   </head>
   <body class="bg-surface font-body text-on-surface antialiased">
-    <div id="root"></div>
+    <div id="root">
+      <div class="huycv-app-preloader" style="min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; background-color: #fff8f5; font-family: 'Be Vietnam Pro', sans-serif; color: #59413d; gap: 16px;">
+        <div style="width: 48px; height: 48px; border-radius: 16px; background-color: #b93824; display: flex; align-items: center; justify-content: center; color: #ffffff; font-weight: 800; font-size: 20px; box-shadow: 0 4px 14px rgba(185, 56, 36, 0.25);">
+          H
+        </div>
+        <div style="text-align: center;">
+          <div style="font-weight: 800; font-size: 16px; color: #971f0e; letter-spacing: -0.02em;">Huy CV</div>
+          <div style="font-size: 12px; color: #59413d; margin-top: 2px;">Ẩm Thực &amp; Nước Uống Vỉa Hè</div>
+        </div>
+        <div style="width: 28px; height: 28px; border: 3px solid #ffdad4; border-top-color: #971f0e; border-radius: 50%; animation: spin 0.8s linear infinite;"></div>
+        <style>
+          @keyframes spin { to { transform: rotate(360deg); } }
+        </style>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

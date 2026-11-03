@@ -6,6 +6,7 @@ import { AdminLayout } from '../../components/admin/AdminLayout';
 export const CategoryManagementView: React.FC = () => {
   const {
     categories,
+    isCategoriesLoading,
     addCategory,
     updateCategory,
     deleteCategory,
@@ -154,7 +155,11 @@ export const CategoryManagementView: React.FC = () => {
             <div>
               <span className="text-xs text-on-surface-variant font-medium block">Tổng số danh mục</span>
               <span className="font-headline font-black text-2xl text-on-surface mt-0.5">
-                {categories.length}
+                {isCategoriesLoading ? (
+                  <span className="inline-block h-7 w-10 bg-surface-container rounded-lg animate-pulse" />
+                ) : (
+                  categories.length
+                )}
               </span>
             </div>
             <div className="w-10 h-10 rounded-xl bg-primary-soft text-primary flex items-center justify-center">
@@ -166,7 +171,11 @@ export const CategoryManagementView: React.FC = () => {
             <div>
               <span className="text-xs text-on-surface-variant font-medium block">Danh mục quán tạo</span>
               <span className="font-headline font-black text-2xl text-primary mt-0.5">
-                {categories.filter((c) => c.id !== 'all' && c.id !== 'trending').length}
+                {isCategoriesLoading ? (
+                  <span className="inline-block h-7 w-10 bg-surface-container rounded-lg animate-pulse" />
+                ) : (
+                  categories.filter((c) => c.id !== 'all' && c.id !== 'trending').length
+                )}
               </span>
             </div>
             <div className="w-10 h-10 rounded-xl bg-primary-soft text-primary flex items-center justify-center">
@@ -178,7 +187,11 @@ export const CategoryManagementView: React.FC = () => {
             <div>
               <span className="text-xs text-on-surface-variant font-medium block">Danh mục hệ thống</span>
               <span className="font-headline font-black text-2xl text-secondary mt-0.5">
-                {categories.filter((c) => c.id === 'all' || c.id === 'trending').length}
+                {isCategoriesLoading ? (
+                  <span className="inline-block h-7 w-10 bg-surface-container rounded-lg animate-pulse" />
+                ) : (
+                  categories.filter((c) => c.id === 'all' || c.id === 'trending').length
+                )}
               </span>
             </div>
             <div className="w-10 h-10 rounded-xl bg-secondary-soft text-secondary flex items-center justify-center">
@@ -330,7 +343,22 @@ export const CategoryManagementView: React.FC = () => {
 
         {/* Category Cards Grid */}
         <div className="bg-surface-container-lowest border border-border rounded-2xl p-4 shadow-xs">
-          {filteredCategories.length === 0 ? (
+          {isCategoriesLoading ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
+              {[...Array(6)].map((_, i) => (
+                <div key={i} className="bg-surface-container-low/40 border border-border/80 rounded-2xl p-4 flex flex-col justify-between h-36 animate-pulse space-y-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-2xl bg-surface-container-high/60 shrink-0" />
+                    <div className="space-y-1.5 flex-1">
+                      <div className="h-4 w-28 bg-surface-container-high/60 rounded" />
+                      <div className="h-3 w-16 bg-surface-container/60 rounded" />
+                    </div>
+                  </div>
+                  <div className="h-6 w-20 bg-surface-container/60 rounded-full" />
+                </div>
+              ))}
+            </div>
+          ) : filteredCategories.length === 0 ? (
             <div className="p-12 text-center text-xs text-on-surface-variant space-y-3">
               <div className="w-14 h-14 rounded-full bg-surface-container mx-auto flex items-center justify-center text-on-surface-variant/60">
                 <span className="material-symbols-outlined text-[28px]">category</span>

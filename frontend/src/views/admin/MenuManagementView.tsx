@@ -132,7 +132,11 @@ export const MenuManagementView: React.FC = () => {
                 Tổng số món
               </span>
               <span className="font-headline font-black text-2xl text-on-surface">
-                {isDishesLoading && dishes.length === 0 ? '...' : stats.total}
+                {isDishesLoading ? (
+                  <span className="inline-block h-7 w-12 bg-surface-container rounded-lg animate-pulse" />
+                ) : (
+                  stats.total
+                )}
               </span>
             </div>
             <span className="material-symbols-outlined text-[28px] text-primary/70">restaurant_menu</span>
@@ -144,7 +148,11 @@ export const MenuManagementView: React.FC = () => {
                 Đang mở bán
               </span>
               <span className="font-headline font-black text-2xl text-tertiary">
-                {isDishesLoading && dishes.length === 0 ? '...' : stats.available}
+                {isDishesLoading ? (
+                  <span className="inline-block h-7 w-12 bg-surface-container rounded-lg animate-pulse" />
+                ) : (
+                  stats.available
+                )}
               </span>
             </div>
             <span className="material-symbols-outlined text-[28px] text-tertiary/70">check_circle</span>
@@ -156,7 +164,11 @@ export const MenuManagementView: React.FC = () => {
                 Tạm hết món
               </span>
               <span className="font-headline font-black text-2xl text-on-surface-variant">
-                {isDishesLoading && dishes.length === 0 ? '...' : stats.unavailable}
+                {isDishesLoading ? (
+                  <span className="inline-block h-7 w-12 bg-surface-container rounded-lg animate-pulse" />
+                ) : (
+                  stats.unavailable
+                )}
               </span>
             </div>
             <span className="material-symbols-outlined text-[28px] text-on-surface-variant/70">do_not_disturb_on</span>
@@ -191,16 +203,23 @@ export const MenuManagementView: React.FC = () => {
                 setSelectedCategory(e.target.value);
                 setPage(1);
               }}
-              className="h-10 px-3 bg-surface-container-low border border-border rounded-xl text-xs md:text-sm text-on-surface outline-none focus:border-primary transition-all"
+              disabled={isDishesLoading && categories.length === 0}
+              className="h-10 px-3 bg-surface-container-low border border-border rounded-xl text-xs md:text-sm text-on-surface outline-none focus:border-primary transition-all disabled:opacity-60"
             >
-              <option value="all">Tất cả danh mục ({categories.length})</option>
-              {categories
-                .filter((c) => c.id !== 'all')
-                .map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name} ({c.count})
-                  </option>
-                ))}
+              {categories.length === 0 ? (
+                <option value="all">Đang tải danh mục...</option>
+              ) : (
+                <>
+                  <option value="all">Tất cả danh mục ({categories.length})</option>
+                  {categories
+                    .filter((c) => c.id !== 'all')
+                    .map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name} ({c.count})
+                      </option>
+                    ))}
+                </>
+              )}
             </select>
 
             {/* Availability Filter */}
@@ -260,10 +279,66 @@ export const MenuManagementView: React.FC = () => {
 
         {/* Content Box */}
         <div className="bg-surface-container-lowest border border-border rounded-2xl overflow-hidden shadow-xs">
-          {isDishesLoading && dishes.length === 0 ? (
-            <div className="p-12 text-center text-xs text-on-surface-variant space-y-2">
-              <span className="material-symbols-outlined text-[32px] animate-spin text-primary">sync</span>
-              <p>Đang tải danh sách món ăn từ máy chủ MySQL...</p>
+          {isDishesLoading ? (
+            <div>
+              {/* Desktop Table Skeleton */}
+              <div className="hidden md:block overflow-x-auto">
+                <table className="w-full text-left text-xs md:text-sm min-w-[700px]">
+                  <thead className="bg-surface-container-low border-b border-border text-on-surface-variant font-bold uppercase tracking-wider text-[11px]">
+                    <tr>
+                      <th className="py-3.5 px-4 w-[38%]">Món ăn</th>
+                      <th className="py-3.5 px-4 w-[18%]">Danh mục</th>
+                      <th className="py-3.5 px-4 w-[16%]">Giá bán</th>
+                      <th className="py-3.5 px-4 w-[16%]">Trạng thái bán</th>
+                      <th className="py-3.5 px-4 w-[12%] text-right">Thao tác</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border/60">
+                    {[...Array(5)].map((_, i) => (
+                      <tr key={i} className="animate-pulse">
+                        <td className="py-3.5 px-4">
+                          <div className="flex items-center gap-3">
+                            <div className="w-12 h-12 rounded-xl bg-surface-container-high/60 shrink-0" />
+                            <div className="space-y-2 flex-1">
+                              <div className="h-4 w-36 bg-surface-container-high/60 rounded" />
+                              <div className="h-3 w-52 bg-surface-container/60 rounded" />
+                            </div>
+                          </div>
+                        </td>
+                        <td className="py-3.5 px-4">
+                          <div className="h-4 w-20 bg-surface-container-high/60 rounded" />
+                        </td>
+                        <td className="py-3.5 px-4">
+                          <div className="h-4 w-16 bg-surface-container-high/60 rounded" />
+                        </td>
+                        <td className="py-3.5 px-4">
+                          <div className="h-6 w-24 bg-surface-container-high/60 rounded-full" />
+                        </td>
+                        <td className="py-3.5 px-4 text-right">
+                          <div className="h-8 w-16 bg-surface-container-high/60 rounded-xl ml-auto" />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Mobile Cards Skeleton */}
+              <div className="md:hidden divide-y divide-border/60">
+                {[...Array(4)].map((_, i) => (
+                  <div key={i} className="p-4 space-y-3 animate-pulse">
+                    <div className="flex items-center gap-3">
+                      <div className="w-16 h-16 rounded-xl bg-surface-container-high/60 shrink-0" />
+                      <div className="flex-1 space-y-2">
+                        <div className="h-3 w-16 bg-surface-container/60 rounded" />
+                        <div className="h-4 w-32 bg-surface-container-high/60 rounded" />
+                        <div className="h-4 w-20 bg-surface-container-high/60 rounded" />
+                      </div>
+                    </div>
+                    <div className="h-7 w-24 bg-surface-container-high/60 rounded-full" />
+                  </div>
+                ))}
+              </div>
             </div>
           ) : filteredDishes.length === 0 ? (
             <div className="p-12 text-center text-xs text-on-surface-variant space-y-3">
