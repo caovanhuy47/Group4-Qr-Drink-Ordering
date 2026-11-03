@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useRestaurant } from '../../contexts/useRestaurant';
 import type { Staff } from '../../types/restaurant';
+import { staffApi } from '../../services/staffApi';
 
 export const StaffLoginView: React.FC = () => {
   const { staffList, loginAs, setViewRoute, showToast } = useRestaurant();
@@ -15,8 +16,9 @@ export const StaffLoginView: React.FC = () => {
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [selectedShift, setSelectedShift] = useState<string>('Ca Tối (17h - 23h)');
   const [errorMsg, setErrorMsg] = useState<string>('');
+  const [isLoggingIn, setIsLoggingIn] = useState<boolean>(false);
 
-  const handleAuthSubmit = (e: React.FormEvent) => {
+  const handleAuthSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
 
@@ -32,25 +34,33 @@ export const StaffLoginView: React.FC = () => {
       return;
     }
 
-    // Match with internal staff database
-    const matchedStaff = staffList.find(
-      (s) =>
-        s.username.toLowerCase() === cleanUsername ||
-        s.id.toLowerCase() === cleanUsername ||
-        s.role.toLowerCase() === cleanUsername ||
-        s.phone.replace(/\s+/g, '') === cleanUsername.replace(/\s+/g, '')
-    );
-
-    // Demonstration PIN check: allows standard PIN 1234 or any password >= 4 chars
-    if (!matchedStaff || cleanPassword !== '1234') {
-      setErrorMsg('Tài khoản hoặc mật khẩu không chính xác. Vui lòng kiểm tra lại.');
-      return;
+    setIsLoggingIn(true);
+    try {
+      const liveStaff = await staffApi.loginStaff({ username: cleanUsername, password: cleanPassword });
+      setAuthenticatedStaff(liveStaff);
+      setSelectedShift(liveStaff.shift || 'Ca Tối (17h - 23h)');
+      setStep('shift');
+    } catch (err) {
+      // Fallback check against local staffList in case of offline demo
+      const matched = staffList.find(
+        (s) =>
+          s.username.toLowerCase() === cleanUsername ||
+          s.id.toLowerCase() === cleanUsername
+      );
+      if (matched && cleanPassword === '1234') {
+        if (matched.status === 'suspended') {
+          setErrorMsg('Tài khoản của bạn đang bị tạm khóa. Vui lòng liên hệ Quản lý.');
+        } else {
+          setAuthenticatedStaff(matched);
+          setSelectedShift(matched.shift || 'Ca Tối (17h - 23h)');
+          setStep('shift');
+        }
+      } else {
+        setErrorMsg(err instanceof Error ? err.message : 'Tài khoản hoặc mật khẩu không chính xác.');
+      }
+    } finally {
+      setIsLoggingIn(false);
     }
-
-    // Authentication successful -> proceed to shift verification
-    setAuthenticatedStaff(matchedStaff);
-    setSelectedShift(matchedStaff.shift || 'Ca Tối (17h - 23h)');
-    setStep('shift');
   };
 
   const handleConfirmShiftAndEnter = () => {
@@ -175,10 +185,15 @@ export const StaffLoginView: React.FC = () => {
             {/* Submit Action */}
             <button
               type="submit"
-              className="w-full py-3.5 rounded-xl bg-primary-container text-on-primary hover:bg-primary-hover font-headline font-bold text-sm shadow-warm-sm transition-transform active:scale-98 flex items-center justify-center gap-2"
+              disabled={isLoggingIn}
+              className="w-full py-3.5 rounded-xl bg-primary-container text-on-primary hover:bg-primary-hover font-headline font-bold text-sm shadow-warm-sm transition-transform active:scale-98 flex items-center justify-center gap-2 disabled:opacity-50"
             >
-              <span className="material-symbols-outlined text-[18px]">verified_user</span>
-              <span>Xác thực tài khoản ca trực</span>
+              {isLoggingIn ? (
+                <span className="w-4 h-4 rounded-full border-2 border-on-primary border-t-transparent animate-spin" />
+              ) : (
+                <span className="material-symbols-outlined text-[18px]">verified_user</span>
+              )}
+              <span>{isLoggingIn ? 'Đang xác thực...' : 'Xác thực tài khoản ca trực'}</span>
             </button>
           </form>
         ) : (

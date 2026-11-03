@@ -10,50 +10,7 @@ import { QueryDishDto } from './dto/query-dish.dto.js';
 import { ValidateOrderDto } from './dto/validate-order.dto.js';
 import { CreateCategoryDto } from './dto/create-category.dto.js';
 import { UpdateCategoryDto } from './dto/update-category.dto.js';
-
-interface StaffPermission {
-  id: string;
-  name: string;
-  role: string;
-  roleName: string;
-  canManageMenu: boolean;
-  status: 'active' | 'suspended';
-}
-
-const AUTHORIZED_STAFF_MENU: Record<string, StaffPermission> = {
-  'staff-1': {
-    id: 'staff-1',
-    name: 'Nguyễn Văn Hùng',
-    role: 'admin',
-    roleName: 'Chủ quán / Quản lý',
-    canManageMenu: true,
-    status: 'active',
-  },
-  'staff-2': {
-    id: 'staff-2',
-    name: 'Trần Thị Mai',
-    role: 'cashier',
-    roleName: 'Thu ngân quầy',
-    canManageMenu: true,
-    status: 'active',
-  },
-  'staff-3': {
-    id: 'staff-3',
-    name: 'Lê Hoàng Nam',
-    role: 'waiter',
-    roleName: 'Nhân viên phục vụ',
-    canManageMenu: false,
-    status: 'active',
-  },
-  'staff-4': {
-    id: 'staff-4',
-    name: 'Phạm Đức Tuấn',
-    role: 'kitchen',
-    roleName: 'Đầu bếp & Pha chế chính',
-    canManageMenu: false,
-    status: 'active',
-  },
-};
+import { StaffService } from '../staff/staff.service.js';
 
 @Injectable()
 export class DishesService implements OnModuleInit {
@@ -64,29 +21,15 @@ export class DishesService implements OnModuleInit {
     private readonly categoryRepo: Repository<Category>,
     @InjectRepository(TableSessionRecord)
     private readonly sessionRecordRepo: Repository<TableSessionRecord>,
+    private readonly staffService: StaffService,
   ) {}
 
   async onModuleInit() {
     await this.seedInitialDataIfEmpty();
   }
 
-  private verifyMenuPermission(staffIdHeader?: string) {
-    const staffId = staffIdHeader || 'staff-1';
-    const staff = AUTHORIZED_STAFF_MENU[staffId];
-
-    if (!staff) {
-      throw new ForbiddenException(`Tài khoản nhân viên [${staffId}] không tồn tại trên hệ thống.`);
-    }
-
-    if (!staff.canManageMenu) {
-      throw new ForbiddenException(`Nhân viên ${staff.name} (${staff.roleName}) không có quyền chỉnh sửa thực đơn.`);
-    }
-
-    if (staff.status !== 'active') {
-      throw new ForbiddenException(`Tài khoản ${staff.name} đang bị tạm khóa hoặc không hoạt động.`);
-    }
-
-    return staff;
+  private async verifyMenuPermission(staffIdHeader?: string) {
+    return this.staffService.verifyStaffPermission(staffIdHeader, 'canManageMenu');
   }
 
   async findAllCategories() {
@@ -129,7 +72,7 @@ export class DishesService implements OnModuleInit {
   }
 
   async createCategory(dto: CreateCategoryDto, staffId?: string) {
-    this.verifyMenuPermission(staffId);
+    await this.verifyMenuPermission(staffId);
 
     const cleanName = dto.name?.trim();
     if (!cleanName) {
@@ -187,7 +130,7 @@ export class DishesService implements OnModuleInit {
   }
 
   async updateCategory(id: string, dto: UpdateCategoryDto, staffId?: string) {
-    this.verifyMenuPermission(staffId);
+    await this.verifyMenuPermission(staffId);
 
     const cat = await this.categoryRepo.findOne({ where: { id } });
     if (!cat) {
@@ -246,7 +189,7 @@ export class DishesService implements OnModuleInit {
   }
 
   async deleteCategory(id: string, staffId?: string) {
-    this.verifyMenuPermission(staffId);
+    await this.verifyMenuPermission(staffId);
 
     if (id === 'all' || id === 'trending') {
       throw new BadRequestException('Không thể xóa danh mục hệ thống mặc định.');
@@ -325,7 +268,7 @@ export class DishesService implements OnModuleInit {
   }
 
   async create(dto: CreateDishDto, staffId?: string) {
-    this.verifyMenuPermission(staffId);
+    await this.verifyMenuPermission(staffId);
 
     const cleanName = dto.name.trim();
     if (!cleanName) {
@@ -365,7 +308,7 @@ export class DishesService implements OnModuleInit {
   }
 
   async update(id: string, dto: UpdateDishDto, staffId?: string) {
-    this.verifyMenuPermission(staffId);
+    await this.verifyMenuPermission(staffId);
 
     const existing = await this.findOne(id);
 
@@ -430,14 +373,14 @@ export class DishesService implements OnModuleInit {
   }
 
   async toggleAvailability(id: string, staffId?: string) {
-    this.verifyMenuPermission(staffId);
+    await this.verifyMenuPermission(staffId);
     const dish = await this.findOne(id);
     dish.isAvailable = !dish.isAvailable;
     return this.dishRepo.save(dish);
   }
 
   async remove(id: string, staffId?: string) {
-    this.verifyMenuPermission(staffId);
+    await this.verifyMenuPermission(staffId);
     const dish = await this.findOne(id);
 
     // Check if dish was ever ordered in table_session_records

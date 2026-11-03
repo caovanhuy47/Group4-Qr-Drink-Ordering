@@ -113,6 +113,7 @@ export interface Banner {
 }
 
 export type StaffRole = 'admin' | 'waiter' | 'kitchen' | 'cashier';
+export type StaffStatus = 'active' | 'suspended' | 'offline';
 
 export interface Staff {
   id: string;
@@ -120,10 +121,22 @@ export interface Staff {
   username: string;
   role: StaffRole;
   roleName: string;
-  phone: string;
-  canCollectMoney: boolean;
+  phone?: string | null;
   shift: string;
-  status: 'active' | 'offline';
+  status: StaffStatus;
+
+  // Granular Permissions
+  canViewTables?: boolean;
+  canCollectMoney: boolean;
+  canManageTables?: boolean;
+  canViewOverview?: boolean;
+  canViewHistory?: boolean;
+  canManageMenu?: boolean;
+  canManageBanners?: boolean;
+  canManageStaff?: boolean;
+
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export type TableOperationalStatus = 'empty' | 'ordered' | 'seated';

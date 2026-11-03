@@ -9,13 +9,13 @@ export class ReportsController {
   constructor(private readonly reportsService: ReportsService) {}
 
   @Get('overview')
-  getOverview(@Query() query: QueryOverviewDto) {
-    return this.reportsService.getOverview(query);
+  getOverview(@Query() query: QueryOverviewDto, @Headers('x-staff-id') staffId?: string) {
+    return this.reportsService.getOverview(query, staffId);
   }
 
   @Get('payment-history')
-  getPaymentHistory(@Query() query: QueryPaymentHistoryDto) {
-    return this.reportsService.getPaymentHistory(query);
+  getPaymentHistory(@Query() query: QueryPaymentHistoryDto, @Headers('x-staff-id') staffId?: string) {
+    return this.reportsService.getPaymentHistory(query, staffId);
   }
 
   @Get('payment-history/:id')

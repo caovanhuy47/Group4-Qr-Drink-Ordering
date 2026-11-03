@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useRestaurant } from '../../contexts/useRestaurant';
-import type { ViewRoute } from '../../types/restaurant';
+import type { ViewRoute, Staff } from '../../types/restaurant';
 
 interface AdminLayoutProps {
   children: React.ReactNode;
@@ -12,16 +12,30 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children, title, subti
   const { viewRoute, setViewRoute, currentUser, logout } = useRestaurant();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  const navItems: { route: ViewRoute; label: string; icon: string }[] = [
-    { route: 'admin/overview', label: 'Tổng quan', icon: 'insights' },
-    { route: 'admin/tables', label: 'Quản lý bàn', icon: 'table_restaurant' },
-    { route: 'admin/history', label: 'Lịch sử thu tiền', icon: 'payments' },
-    { route: 'admin/menu', label: 'Quản lý món ăn', icon: 'restaurant_menu' },
-    { route: 'admin/categories', label: 'Quản lý danh mục', icon: 'category' },
-    { route: 'admin/banners', label: 'Quản lý banner', icon: 'view_carousel' },
-    { route: 'admin/staff', label: 'Nhân viên & Phân quyền', icon: 'badge' },
+  const navItems: { route: ViewRoute; label: string; icon: string; permission?: keyof Staff }[] = [
+    { route: 'admin/overview', label: 'Tổng quan', icon: 'insights', permission: 'canViewOverview' },
+    { route: 'admin/tables', label: 'Quản lý bàn', icon: 'table_restaurant', permission: 'canViewTables' },
+    { route: 'admin/history', label: 'Lịch sử thu tiền', icon: 'payments', permission: 'canViewHistory' },
+    { route: 'admin/menu', label: 'Quản lý món ăn', icon: 'restaurant_menu', permission: 'canManageMenu' },
+    { route: 'admin/categories', label: 'Quản lý danh mục', icon: 'category', permission: 'canManageMenu' },
+    { route: 'admin/banners', label: 'Quản lý banner', icon: 'view_carousel', permission: 'canManageBanners' },
+    { route: 'admin/staff', label: 'Nhân viên & Phân quyền', icon: 'badge', permission: 'canManageStaff' },
     { route: 'admin/profile', label: 'Tài khoản & Ca trực', icon: 'account_circle' },
   ];
+
+  // Filter items based on staff permissions
+  const authorizedNavItems = navItems.filter((item) => {
+    if (!item.permission) return true;
+    if (currentUser?.role === 'admin') return true;
+    return Boolean(currentUser?.[item.permission]);
+  });
+
+  // Verify access for currently active route
+  const currentItem = navItems.find((item) => item.route === viewRoute);
+  const isAuthorized =
+    !currentItem?.permission ||
+    currentUser?.role === 'admin' ||
+    Boolean(currentUser?.[currentItem.permission]);
 
   return (
     <div className="min-h-screen bg-background flex flex-col md:flex-row text-on-surface">
@@ -96,7 +110,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children, title, subti
 
           {/* Navigation Items */}
           <nav className="space-y-1">
-            {navItems.map((item) => {
+            {authorizedNavItems.map((item) => {
               const isActive = viewRoute === item.route;
               return (
                 <button
@@ -166,8 +180,42 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children, title, subti
           </div>
         </div>
 
-        {/* Page Content */}
-        <div className="p-4 md:p-8 flex-1">{children}</div>
+        {/* Page Content with Permission Guard */}
+        <div className="p-4 md:p-8 flex-1">
+          {isAuthorized ? (
+            children
+          ) : (
+            <div className="max-w-md mx-auto my-12 bg-surface-container-lowest border border-border rounded-2xl p-8 text-center space-y-4 shadow-warm-xs">
+              <div className="w-16 h-16 rounded-2xl bg-error-container/40 text-error flex items-center justify-center mx-auto">
+                <span className="material-symbols-outlined text-[32px]">lock_person</span>
+              </div>
+              <div className="space-y-1.5">
+                <h3 className="font-headline font-bold text-lg text-on-surface">
+                  Không Có Quyền Truy Cập
+                </h3>
+                <p className="text-xs text-on-surface-variant leading-relaxed">
+                  Tài khoản của bạn ({currentUser?.name || 'Nhân viên'} - {currentUser?.roleName}) chưa được cấp quyền truy cập vào màn hình này.
+                </p>
+              </div>
+              <div className="pt-2 flex justify-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setViewRoute('admin/tables')}
+                  className="px-4 py-2 rounded-xl bg-primary text-on-primary text-xs font-bold shadow-xs hover:bg-primary-hover transition-colors"
+                >
+                  Về Quản lý bàn
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewRoute('admin/profile')}
+                  className="px-4 py-2 rounded-xl bg-surface-container hover:bg-surface-container-high text-on-surface text-xs font-bold transition-colors"
+                >
+                  Xem hồ sơ của tôi
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
       </main>
     </div>
   );

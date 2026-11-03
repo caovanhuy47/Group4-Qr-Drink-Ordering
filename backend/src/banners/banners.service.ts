@@ -11,79 +11,22 @@ import { Banner } from './entities/banner.entity.js';
 import { CreateBannerDto } from './dto/create-banner.dto.js';
 import { UpdateBannerDto } from './dto/update-banner.dto.js';
 import { ReorderBannersDto } from './dto/reorder-banners.dto.js';
-
-interface StaffPermission {
-  id: string;
-  name: string;
-  role: string;
-  roleName: string;
-  canManageMenu: boolean;
-  status: 'active' | 'offline';
-}
-
-const AUTHORIZED_STAFF_BANNERS: Record<string, StaffPermission> = {
-  'staff-1': {
-    id: 'staff-1',
-    name: 'Nguyễn Văn Hùng',
-    role: 'admin',
-    roleName: 'Chủ quán / Quản lý',
-    canManageMenu: true,
-    status: 'active',
-  },
-  'staff-2': {
-    id: 'staff-2',
-    name: 'Trần Thị Mai',
-    role: 'cashier',
-    roleName: 'Thu ngân / Quản lý ca',
-    canManageMenu: true,
-    status: 'active',
-  },
-  'staff-3': {
-    id: 'staff-3',
-    name: 'Lê Hoàng Nam',
-    role: 'waiter',
-    roleName: 'Nhân viên phục vụ',
-    canManageMenu: false,
-    status: 'active',
-  },
-  'staff-4': {
-    id: 'staff-4',
-    name: 'Phạm Đức Tuấn',
-    role: 'kitchen',
-    roleName: 'Đầu bếp & Pha chế chính',
-    canManageMenu: false,
-    status: 'active',
-  },
-};
+import { StaffService } from '../staff/staff.service.js';
 
 @Injectable()
 export class BannersService implements OnModuleInit {
   constructor(
     @InjectRepository(Banner)
     private readonly bannerRepo: Repository<Banner>,
+    private readonly staffService: StaffService,
   ) {}
 
   async onModuleInit() {
     await this.seedInitialBannersIfEmpty();
   }
 
-  private verifyBannerPermission(staffIdHeader?: string) {
-    const staffId = staffIdHeader || 'staff-1';
-    const staff = AUTHORIZED_STAFF_BANNERS[staffId];
-
-    if (!staff) {
-      throw new ForbiddenException(`Tài khoản nhân viên [${staffId}] không tồn tại trên hệ thống.`);
-    }
-
-    if (!staff.canManageMenu) {
-      throw new ForbiddenException(`Nhân viên ${staff.name} (${staff.roleName}) không có quyền quản lý banner.`);
-    }
-
-    if (staff.status !== 'active') {
-      throw new ForbiddenException(`Tài khoản ${staff.name} đang bị tạm khóa hoặc không hoạt động.`);
-    }
-
-    return staff;
+  private async verifyBannerPermission(staffIdHeader?: string) {
+    return this.staffService.verifyStaffPermission(staffIdHeader, 'canManageBanners');
   }
 
   private async seedInitialBannersIfEmpty() {
@@ -150,7 +93,7 @@ export class BannersService implements OnModuleInit {
   }
 
   async create(dto: CreateBannerDto, staffId?: string): Promise<Banner> {
-    this.verifyBannerPermission(staffId);
+    await this.verifyBannerPermission(staffId);
 
     const cleanAdminName = dto.adminName?.trim();
     if (!cleanAdminName) {
@@ -196,7 +139,7 @@ export class BannersService implements OnModuleInit {
   }
 
   async update(id: string, dto: UpdateBannerDto, staffId?: string): Promise<Banner> {
-    this.verifyBannerPermission(staffId);
+    await this.verifyBannerPermission(staffId);
 
     const existing = await this.findOne(id);
 
@@ -268,14 +211,14 @@ export class BannersService implements OnModuleInit {
   }
 
   async toggleStatus(id: string, staffId?: string): Promise<Banner> {
-    this.verifyBannerPermission(staffId);
+    await this.verifyBannerPermission(staffId);
     const banner = await this.findOne(id);
     banner.isActive = !banner.isActive;
     return this.bannerRepo.save(banner);
   }
 
   async reorder(dto: ReorderBannersDto, staffId?: string): Promise<{ success: boolean; message: string }> {
-    this.verifyBannerPermission(staffId);
+    await this.verifyBannerPermission(staffId);
 
     if (!dto.items || !Array.isArray(dto.items)) {
       throw new BadRequestException('Danh sách sắp xếp không hợp lệ');
@@ -296,7 +239,7 @@ export class BannersService implements OnModuleInit {
   }
 
   async remove(id: string, staffId?: string): Promise<{ success: boolean; message: string }> {
-    this.verifyBannerPermission(staffId);
+    await this.verifyBannerPermission(staffId);
     const banner = await this.findOne(id);
     await this.bannerRepo.remove(banner);
     return {

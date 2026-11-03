@@ -26,6 +26,7 @@ import {
 import { reportsApi } from '../services/reportsApi';
 import { dishesApi } from '../services/dishesApi';
 import { bannersApi } from '../services/bannersApi';
+import { staffApi } from '../services/staffApi';
 import { RestaurantContext } from './restaurantContextDef';
 
 const routeToHash: Record<ViewRoute, string> = {
@@ -184,6 +185,16 @@ function saveActiveOrderForTable(table: string, order: Order | null): void {
   }
 }
 
+function getSavedStaffSession(): Staff {
+  try {
+    const saved = localStorage.getItem('huycv_staff_session');
+    if (saved) {
+      return JSON.parse(saved);
+    }
+  } catch {}
+  return INITIAL_STAFF[0];
+}
+
 export const RestaurantProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [currentTable, setCurrentTableState] = useState<string>(() => resolveCurrentTableFromEnv());
   const [viewRoute, setViewRouteState] = useState<ViewRoute>(() => getRouteFromHash());
@@ -317,25 +328,33 @@ export const RestaurantProvider: React.FC<{ children: ReactNode }> = ({ children
     }
   }, []);
 
+  const [currentUser, setCurrentUser] = useState<Staff | null>(() => getSavedStaffSession());
+  const [staffList, setStaffList] = useState<Staff[]>(INITIAL_STAFF);
+  const [isStaffLoading, setIsStaffLoading] = useState<boolean>(false);
+
   useEffect(() => {
     let ignore = false;
+    const sessionUser = getSavedStaffSession();
+    const initialStaffId = sessionUser?.id || 'staff-1';
     Promise.all([
       dishesApi.fetchDishes({ includeArchived: true }),
       dishesApi.fetchCategories(),
       bannersApi.fetchBanners(true),
+      staffApi.fetchStaffList(initialStaffId).catch(() => INITIAL_STAFF),
     ])
-      .then(([liveDishes, liveCategories, liveBanners]) => {
+      .then(([liveDishes, liveCategories, liveBanners, liveStaff]) => {
         if (!ignore) {
           setDishes(liveDishes);
           setCategories(liveCategories);
           setBanners(liveBanners);
+          setStaffList(liveStaff);
           setDishesError('');
           setIsDishesLoading(false);
         }
       })
       .catch((err) => {
         if (!ignore) {
-          const msg = err instanceof Error ? err.message : 'Không thể tải danh sách món ăn từ máy chủ';
+          const msg = err instanceof Error ? err.message : 'Không thể tải dữ liệu khởi tạo từ máy chủ';
           setDishesError(msg);
           setIsDishesLoading(false);
         }
@@ -345,6 +364,26 @@ export const RestaurantProvider: React.FC<{ children: ReactNode }> = ({ children
       ignore = true;
     };
   }, []);
+
+  const refreshStaffList = useCallback(async () => {
+    setIsStaffLoading(true);
+    try {
+      const staffId = currentUser?.id || 'staff-1';
+      const data = await staffApi.fetchStaffList(staffId);
+      setStaffList(data);
+      if (currentUser) {
+        const me = data.find((s) => s.id === currentUser.id);
+        if (me) {
+          setCurrentUser(me);
+          localStorage.setItem('huycv_staff_session', JSON.stringify(me));
+        }
+      }
+    } catch (err) {
+      console.warn('Lỗi tải danh sách nhân viên:', err);
+    } finally {
+      setIsStaffLoading(false);
+    }
+  }, [currentUser]);
 
   const refreshBanners = useCallback(async () => {
     setIsBannersLoading(true);
@@ -357,9 +396,6 @@ export const RestaurantProvider: React.FC<{ children: ReactNode }> = ({ children
       setIsBannersLoading(false);
     }
   }, []);
-
-  const [staffList, setStaffList] = useState<Staff[]>(INITIAL_STAFF);
-  const [currentUser, setCurrentUser] = useState<Staff | null>(INITIAL_STAFF[0]);
 
   // Customer Authentication state (Cleaned for customer flow)
   const [currentCustomer, setCurrentCustomer] = useState<CustomerUser | null>(null);
@@ -948,27 +984,138 @@ export const RestaurantProvider: React.FC<{ children: ReactNode }> = ({ children
 
   const loginAs = (staff: Staff) => {
     setCurrentUser(staff);
+    try {
+      localStorage.setItem('huycv_staff_session', JSON.stringify(staff));
+    } catch {}
     // Direct staff to Table Management upon login per operational specs
     setViewRoute('admin/tables');
   };
 
+  const loginWithCredentials = async (
+    username: string,
+    pass: string,
+  ): Promise<{ success: boolean; message: string }> => {
+    try {
+      const staff = await staffApi.loginStaff({ username, password: pass });
+      loginAs(staff);
+      showToast(`Chào mừng ${staff.name} (${staff.roleName}) đã vào ca trực!`, 'success');
+      return { success: true, message: 'Đăng nhập thành công' };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Đăng nhập không thành công';
+      showToast(msg, 'error');
+      return { success: false, message: msg };
+    }
+  };
+
   const logout = () => {
     setCurrentUser(null);
+    try {
+      localStorage.removeItem('huycv_staff_session');
+    } catch {}
     setViewRoute('login');
+    showToast('Đã đăng xuất ca trực thành công.', 'info');
   };
 
-  const addStaff = (staffData: Omit<Staff, 'id'>) => {
-    const newStaff: Staff = {
-      ...staffData,
-      id: `staff-${Date.now()}`,
-    };
-    setStaffList((prev) => [...prev, newStaff]);
+  const addStaff = async (
+    staffData: Partial<Staff> & { password: string },
+  ): Promise<{ success: boolean; message: string }> => {
+    const staffId = currentUser?.id || 'staff-1';
+    try {
+      const created = await staffApi.createStaff(staffData, staffId);
+      setStaffList((prev) => [...prev, created]);
+      showToast(`Đã thêm nhân viên "${created.name}" thành công!`, 'success');
+      return { success: true, message: 'Thêm nhân viên thành công' };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Lỗi khi thêm nhân viên';
+      showToast(msg, 'error');
+      throw err;
+    }
   };
 
-  const toggleStaffMoneyPermission = (staffId: string) => {
-    setStaffList((prev) =>
-      prev.map((s) => (s.id === staffId ? { ...s, canCollectMoney: !s.canCollectMoney } : s))
-    );
+  const updateStaff = async (
+    id: string,
+    staffData: Partial<Staff> & { password?: string },
+  ): Promise<{ success: boolean; message: string }> => {
+    const staffId = currentUser?.id || 'staff-1';
+    try {
+      const updated = await staffApi.updateStaff(id, staffData, staffId);
+      setStaffList((prev) => prev.map((s) => (s.id === id ? updated : s)));
+      if (currentUser?.id === id) {
+        setCurrentUser(updated);
+        try {
+          localStorage.setItem('huycv_staff_session', JSON.stringify(updated));
+        } catch {}
+      }
+      showToast(`Đã cập nhật thông tin nhân viên "${updated.name}" thành công!`, 'success');
+      return { success: true, message: 'Cập nhật thành công' };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Lỗi khi cập nhật nhân viên';
+      showToast(msg, 'error');
+      throw err;
+    }
+  };
+
+  const updateProfile = async (
+    data: { name?: string; phone?: string; shift?: string },
+  ): Promise<{ success: boolean; message: string }> => {
+    if (!currentUser) return { success: false, message: 'Chưa đăng nhập' };
+    try {
+      const updated = await staffApi.updateProfile(currentUser.id, data, currentUser.id);
+      setCurrentUser(updated);
+      setStaffList((prev) => prev.map((s) => (s.id === updated.id ? updated : s)));
+      try {
+        localStorage.setItem('huycv_staff_session', JSON.stringify(updated));
+      } catch {}
+      showToast('Đã cập nhật hồ sơ cá nhân thành công!', 'success');
+      return { success: true, message: 'Cập nhật thành công' };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Lỗi cập nhật hồ sơ';
+      showToast(msg, 'error');
+      throw err;
+    }
+  };
+
+  const toggleStaffStatus = async (staffId: string): Promise<{ success: boolean; message: string }> => {
+    const requesterId = currentUser?.id || 'staff-1';
+    try {
+      const updated = await staffApi.toggleStaffStatus(staffId, requesterId);
+      setStaffList((prev) => prev.map((s) => (s.id === staffId ? updated : s)));
+      showToast(
+        updated.status === 'suspended'
+          ? `Đã tạm khóa tài khoản nhân viên "${updated.name}"`
+          : `Đã mở khóa tài khoản nhân viên "${updated.name}"`,
+        'info',
+      );
+      return { success: true, message: 'Thao tác thành công' };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Lỗi khi đổi trạng thái tài khoản';
+      showToast(msg, 'error');
+      throw err;
+    }
+  };
+
+  const resetStaffPassword = async (
+    staffId: string,
+    newPass: string,
+  ): Promise<{ success: boolean; message: string }> => {
+    const requesterId = currentUser?.id || 'staff-1';
+    try {
+      const res = await staffApi.resetStaffPassword(staffId, newPass, requesterId);
+      showToast(res.message, 'success');
+      return res;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Lỗi khi đặt lại mật khẩu';
+      showToast(msg, 'error');
+      throw err;
+    }
+  };
+
+  const toggleStaffMoneyPermission = async (staffId: string) => {
+    const target = staffList.find((s) => s.id === staffId);
+    if (!target) return;
+    try {
+      await updateStaff(staffId, { canCollectMoney: !target.canCollectMoney });
+    } catch {}
   };
 
   return (
@@ -1022,9 +1169,16 @@ export const RestaurantProvider: React.FC<{ children: ReactNode }> = ({ children
         isBannersLoading,
         staffList,
         currentUser,
+        isStaffLoading,
+        refreshStaffList,
         loginAs,
+        loginWithCredentials,
         logout,
         addStaff,
+        updateStaff,
+        updateProfile,
+        toggleStaffStatus,
+        resetStaffPassword,
         toggleStaffMoneyPermission,
         toast,
         showToast,

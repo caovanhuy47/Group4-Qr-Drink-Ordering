@@ -5,6 +5,7 @@ import { TableSessionRecord } from './entities/table-session-record.entity.js';
 import type { QueryOverviewDto } from './dto/query-overview.dto.js';
 import type { QueryPaymentHistoryDto } from './dto/query-payment-history.dto.js';
 import type { CreatePaymentRecordDto } from './dto/create-payment-record.dto.js';
+import { StaffService } from '../staff/staff.service.js';
 
 export interface BackendStaffInfo {
   id: string;
@@ -75,6 +76,7 @@ export class ReportsService implements OnModuleInit {
   constructor(
     @InjectRepository(TableSessionRecord)
     private readonly sessionRepo: Repository<TableSessionRecord>,
+    private readonly staffService: StaffService,
   ) {}
 
   async onModuleInit() {
@@ -106,7 +108,10 @@ export class ReportsService implements OnModuleInit {
     return parseVietnamDateRange(todayStr, todayStr);
   }
 
-  async getOverview(query: QueryOverviewDto) {
+  async getOverview(query: QueryOverviewDto, staffId?: string) {
+    if (staffId) {
+      await this.staffService.verifyStaffPermission(staffId, 'canViewOverview');
+    }
     const { start, end, isSingleDay } = this.getPeriodDateRange(query.period, query.startDate, query.endDate);
 
     // Get all confirmed paid records in period
@@ -247,7 +252,10 @@ export class ReportsService implements OnModuleInit {
     };
   }
 
-  async getPaymentHistory(query: QueryPaymentHistoryDto) {
+  async getPaymentHistory(query: QueryPaymentHistoryDto, staffId?: string) {
+    if (staffId) {
+      await this.staffService.verifyStaffPermission(staffId, 'canViewHistory');
+    }
     const page = Math.max(1, query.page || 1);
     const limit = Math.max(1, Math.min(50, query.limit || 10));
     const skip = (page - 1) * limit;
@@ -391,21 +399,9 @@ export class ReportsService implements OnModuleInit {
   }
 
   async recordPayment(dto: CreatePaymentRecordDto, staffIdHeader?: string) {
-    // 1. Authenticate & Authorize Staff from Backend Registry
+    // 1. Authenticate & Authorize Staff from StaffService (MySQL)
     const staffId = staffIdHeader || dto.staffId || 'staff-1';
-    const staff = AUTHORIZED_STAFF_REGISTRY[staffId];
-
-    if (!staff) {
-      throw new ForbiddenException(`Tài khoản nhân viên [${staffId}] không tồn tại trên hệ thống.`);
-    }
-
-    if (!staff.canCollectMoney) {
-      throw new ForbiddenException(`Nhân viên ${staff.name} (${staff.roleName}) không có quyền xác nhận thu tiền tại bàn.`);
-    }
-
-    if (staff.status !== 'active') {
-      throw new ForbiddenException(`Tài khoản nhân viên ${staff.name} đang bị tạm khóa hoặc không hoạt động.`);
-    }
+    const staff = await this.staffService.verifyStaffPermission(staffId, 'canCollectMoney');
 
     // Backend provides verified identity and role to prevent client spoofing
     const verifiedStaffName = `${staff.name} (${staff.roleName})`;
@@ -425,8 +421,21 @@ export class ReportsService implements OnModuleInit {
       throw new BadRequestException('Danh sách món của lượt bàn không được để trống khi xác nhận thu tiền.');
     }
 
-    const totalQuantity = dto.items.reduce((sum, item) => sum + (Number(item.quantity) || 1), 0);
-    const totalAmount = dto.items.reduce((sum, item) => sum + (Number(item.totalPrice) || (Number(item.unitPrice) * Number(item.quantity))), 0);
+    const totalQuantity =
+      Number(dto.totalQuantity) > 0
+        ? Number(dto.totalQuantity)
+        : dto.items.reduce((sum, item: any) => sum + (Number(item.quantity) || 1), 0);
+
+    const calculatedAmount = dto.items.reduce((sum, item: any) => {
+      const itemTotal =
+        Number(item.totalPrice) ||
+        Number(item.subtotal) ||
+        ((Number(item.unitPrice) || Number(item.price) || 0) * (Number(item.quantity) || 1));
+      return sum + (Number.isNaN(itemTotal) ? 0 : itemTotal);
+    }, 0);
+
+    const totalAmount =
+      Number(dto.totalAmount) > 0 ? Number(dto.totalAmount) : calculatedAmount;
 
     const now = new Date();
     const confirmedAt = dto.confirmedAt ? new Date(dto.confirmedAt) : now;

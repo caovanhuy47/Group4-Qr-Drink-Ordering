@@ -89,10 +89,17 @@ export interface RestaurantContextType {
 
   staffList: Staff[];
   currentUser: Staff | null;
+  isStaffLoading: boolean;
+  refreshStaffList: () => Promise<void>;
   loginAs: (staff: Staff) => void;
+  loginWithCredentials: (username: string, password: string) => Promise<{ success: boolean; message: string }>;
   logout: () => void;
-  addStaff: (staff: Omit<Staff, 'id'>) => void;
-  toggleStaffMoneyPermission: (staffId: string) => void;
+  addStaff: (staff: Partial<Staff> & { password: string }) => Promise<{ success: boolean; message: string }>;
+  updateStaff: (id: string, staff: Partial<Staff> & { password?: string }) => Promise<{ success: boolean; message: string }>;
+  updateProfile: (data: { name?: string; phone?: string; shift?: string }) => Promise<{ success: boolean; message: string }>;
+  toggleStaffStatus: (staffId: string) => Promise<{ success: boolean; message: string }>;
+  resetStaffPassword: (staffId: string, newPass: string) => Promise<{ success: boolean; message: string }>;
+  toggleStaffMoneyPermission: (staffId: string) => Promise<void>;
 
   // Table Management (Operational & Real-time)
   tables: DiningTable[];
