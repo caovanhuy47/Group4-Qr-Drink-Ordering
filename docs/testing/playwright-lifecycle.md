@@ -86,3 +86,4 @@ Mọi kịch bản kiểm thử Playwright trong dự án cần tuân theo 6 pha
    ```bash
    node scratch/verify_overview_lifecycle.js
    ```
+
