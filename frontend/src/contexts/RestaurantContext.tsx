@@ -337,13 +337,12 @@ export const RestaurantProvider: React.FC<{ children: ReactNode }> = ({ children
   useEffect(() => {
     let ignore = false;
     const sessionUser = getSavedStaffSession();
-    const initialStaffId = sessionUser?.id || 'staff-1';
 
     Promise.all([
       dishesApi.fetchDishes({ includeArchived: true }),
       dishesApi.fetchCategories(),
       bannersApi.fetchBanners(true),
-      sessionUser ? staffApi.fetchStaffList(initialStaffId).catch(() => []) : Promise.resolve([]),
+      sessionUser ? staffApi.fetchStaffList(sessionUser.id).catch(() => []) : Promise.resolve([]),
     ])
       .then(([liveDishes, liveCategories, liveBanners, liveStaff]) => {
         if (!ignore) {
@@ -396,9 +395,13 @@ export const RestaurantProvider: React.FC<{ children: ReactNode }> = ({ children
   }, []);
 
   const refreshStaffList = useCallback(async () => {
+    if (!currentUser) {
+      setIsStaffLoading(false);
+      return;
+    }
     setIsStaffLoading(true);
     try {
-      const staffId = currentUser?.id || 'staff-1';
+      const staffId = currentUser.id;
       const data = await staffApi.fetchStaffList(staffId);
       setStaffList(data);
       if (currentUser) {
@@ -556,14 +559,39 @@ export const RestaurantProvider: React.FC<{ children: ReactNode }> = ({ children
     setCart([]);
   };
 
-  // Tables State
-  const [tables, setTables] = useState<DiningTable[]>(INITIAL_TABLES);
+  // Tables State with SessionStorage persistence
+  const [tables, setTablesState] = useState<DiningTable[]>(() => {
+    if (typeof window === 'undefined') return INITIAL_TABLES;
+    try {
+      const raw = sessionStorage.getItem('huycv_tables_state');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {}
+    return INITIAL_TABLES;
+  });
+
+  const setTables = useCallback((updater: React.SetStateAction<DiningTable[]>) => {
+    setTablesState((prev) => {
+      const next = typeof updater === 'function' ? updater(prev) : updater;
+      try {
+        sessionStorage.setItem('huycv_tables_state', JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+  }, []);
+
   const [selectedTableForDetail, setSelectedTableForDetail] = useState<DiningTable | null>(null);
   const [isTableQrConfigModalOpen, setIsTableQrConfigModalOpen] = useState<boolean>(false);
 
   const markTableServedAndPaid = async (tableId: string): Promise<{ success: boolean; message: string }> => {
-    // Check staff permission
-    if (currentUser && currentUser.canCollectMoney === false) {
+    if (!currentUser) {
+      showToast('Vui lòng đăng nhập với tài khoản nhân viên để xác nhận thu tiền tại bàn.', 'error');
+      return { success: false, message: 'Yêu cầu đăng nhập' };
+    }
+
+    if (currentUser.canCollectMoney === false) {
       showToast('Tài khoản của bạn không có quyền xác nhận thu tiền tại bàn.', 'error');
       return { success: false, message: 'Không có quyền thu tiền' };
     }
@@ -573,7 +601,7 @@ export const RestaurantProvider: React.FC<{ children: ReactNode }> = ({ children
       return { success: false, message: 'Bàn không tồn tại hoặc chưa có đơn gọi món' };
     }
 
-    const staffId = currentUser?.id || 'staff-1';
+    const staffId = currentUser.id;
     const nowTime = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
 
     // Persist real payment record into backend MySQL first to ensure consistency!
@@ -823,7 +851,11 @@ export const RestaurantProvider: React.FC<{ children: ReactNode }> = ({ children
   };
 
   const toggleDishAvailability = async (dishId: string): Promise<boolean> => {
-    const staffId = currentUser?.id || 'staff-1';
+    if (!currentUser) {
+      showToast('Vui lòng đăng nhập với tài khoản quản lý để đổi trạng thái món.', 'error');
+      return false;
+    }
+    const staffId = currentUser.id;
     try {
       const updated = await dishesApi.toggleDishStatus(dishId, staffId);
       setDishes((prev) => prev.map((d) => (d.id === dishId ? updated : d)));
@@ -840,7 +872,11 @@ export const RestaurantProvider: React.FC<{ children: ReactNode }> = ({ children
   };
 
   const saveDish = async (dish: Dish): Promise<boolean> => {
-    const staffId = currentUser?.id || 'staff-1';
+    if (!currentUser) {
+      showToast('Vui lòng đăng nhập với tài khoản quản lý để lưu món ăn.', 'error');
+      return false;
+    }
+    const staffId = currentUser.id;
     try {
       const exists = dishes.some((d) => d.id === dish.id);
       let saved: Dish;
@@ -863,7 +899,11 @@ export const RestaurantProvider: React.FC<{ children: ReactNode }> = ({ children
   };
 
   const deleteDish = async (dishId: string): Promise<boolean> => {
-    const staffId = currentUser?.id || 'staff-1';
+    if (!currentUser) {
+      showToast('Vui lòng đăng nhập với tài khoản quản lý để xóa món ăn.', 'error');
+      return false;
+    }
+    const staffId = currentUser.id;
     try {
       const result = await dishesApi.deleteDish(dishId, staffId);
       if (result.archived) {
@@ -896,8 +936,12 @@ export const RestaurantProvider: React.FC<{ children: ReactNode }> = ({ children
   }, []);
 
   const addCategory = async (name: string, icon: string, order?: number): Promise<{ success: boolean; message: string }> => {
+    if (!currentUser) {
+      showToast('Vui lòng đăng nhập với tài khoản quản lý để thêm danh mục.', 'error');
+      throw new Error('Yêu cầu đăng nhập');
+    }
     try {
-      const staffId = currentUser?.id || 'staff-1';
+      const staffId = currentUser.id;
       const created = await dishesApi.createCategory({ name, icon, order }, staffId);
       setCategories((prev) => [...prev, created]);
       await refreshDishes();
@@ -911,8 +955,12 @@ export const RestaurantProvider: React.FC<{ children: ReactNode }> = ({ children
   };
 
   const updateCategory = async (id: string, name: string, icon: string, order?: number): Promise<{ success: boolean; message: string }> => {
+    if (!currentUser) {
+      showToast('Vui lòng đăng nhập với tài khoản quản lý để sửa danh mục.', 'error');
+      throw new Error('Yêu cầu đăng nhập');
+    }
     try {
-      const staffId = currentUser?.id || 'staff-1';
+      const staffId = currentUser.id;
       const updated = await dishesApi.updateCategory(id, { name, icon, order }, staffId);
       setCategories((prev) => prev.map((c) => (c.id === id ? { ...c, ...updated } : c)));
       await refreshDishes();
@@ -926,8 +974,12 @@ export const RestaurantProvider: React.FC<{ children: ReactNode }> = ({ children
   };
 
   const deleteCategory = async (catId: string): Promise<{ success: boolean; message: string }> => {
+    if (!currentUser) {
+      showToast('Vui lòng đăng nhập với tài khoản quản lý để xóa danh mục.', 'error');
+      throw new Error('Yêu cầu đăng nhập');
+    }
     try {
-      const staffId = currentUser?.id || 'staff-1';
+      const staffId = currentUser.id;
       const res = await dishesApi.deleteCategory(catId, staffId);
       setCategories((prev) => prev.filter((c) => c.id !== catId));
       await refreshDishes();
@@ -941,7 +993,11 @@ export const RestaurantProvider: React.FC<{ children: ReactNode }> = ({ children
   };
 
   const saveBanner = async (bannerData: Partial<Banner>): Promise<boolean> => {
-    const staffId = currentUser?.id || 'staff-1';
+    if (!currentUser) {
+      showToast('Vui lòng đăng nhập với tài khoản quản lý để lưu banner.', 'error');
+      return false;
+    }
+    const staffId = currentUser.id;
     try {
       const exists = bannerData.id && banners.some((b) => b.id === bannerData.id);
       let saved: Banner;
@@ -963,7 +1019,11 @@ export const RestaurantProvider: React.FC<{ children: ReactNode }> = ({ children
   };
 
   const toggleBannerActive = async (bannerId: string): Promise<boolean> => {
-    const staffId = currentUser?.id || 'staff-1';
+    if (!currentUser) {
+      showToast('Vui lòng đăng nhập với tài khoản quản lý để đổi trạng thái banner.', 'error');
+      return false;
+    }
+    const staffId = currentUser.id;
     try {
       const updated = await bannersApi.toggleBannerStatus(bannerId, staffId);
       setBanners((prev) => prev.map((b) => (b.id === bannerId ? updated : b)));
@@ -982,7 +1042,11 @@ export const RestaurantProvider: React.FC<{ children: ReactNode }> = ({ children
   };
 
   const reorderBanners = async (items: { id: string; displayOrder: number }[]): Promise<boolean> => {
-    const staffId = currentUser?.id || 'staff-1';
+    if (!currentUser) {
+      showToast('Vui lòng đăng nhập với tài khoản quản lý để sắp xếp banner.', 'error');
+      return false;
+    }
+    const staffId = currentUser.id;
     try {
       await bannersApi.reorderBanners(items, staffId);
       setBanners((prev) => {
@@ -1001,7 +1065,11 @@ export const RestaurantProvider: React.FC<{ children: ReactNode }> = ({ children
   };
 
   const deleteBanner = async (bannerId: string): Promise<boolean> => {
-    const staffId = currentUser?.id || 'staff-1';
+    if (!currentUser) {
+      showToast('Vui lòng đăng nhập với tài khoản quản lý để xóa banner.', 'error');
+      return false;
+    }
+    const staffId = currentUser.id;
     try {
       const target = banners.find((b) => b.id === bannerId);
       await bannersApi.deleteBanner(bannerId, staffId);
@@ -1052,7 +1120,11 @@ export const RestaurantProvider: React.FC<{ children: ReactNode }> = ({ children
   const addStaff = async (
     staffData: Partial<Staff> & { password: string },
   ): Promise<{ success: boolean; message: string }> => {
-    const staffId = currentUser?.id || 'staff-1';
+    if (!currentUser) {
+      showToast('Vui lòng đăng nhập với tài khoản Quản trị viên để thêm nhân viên.', 'error');
+      throw new Error('Yêu cầu đăng nhập');
+    }
+    const staffId = currentUser.id;
     try {
       const created = await staffApi.createStaff(staffData, staffId);
       setStaffList((prev) => [...prev, created]);
@@ -1069,7 +1141,11 @@ export const RestaurantProvider: React.FC<{ children: ReactNode }> = ({ children
     id: string,
     staffData: Partial<Staff> & { password?: string },
   ): Promise<{ success: boolean; message: string }> => {
-    const staffId = currentUser?.id || 'staff-1';
+    if (!currentUser) {
+      showToast('Vui lòng đăng nhập với tài khoản Quản trị viên để cập nhật nhân viên.', 'error');
+      throw new Error('Yêu cầu đăng nhập');
+    }
+    const staffId = currentUser.id;
     try {
       const updated = await staffApi.updateStaff(id, staffData, staffId);
       setStaffList((prev) => prev.map((s) => (s.id === id ? updated : s)));
@@ -1109,7 +1185,11 @@ export const RestaurantProvider: React.FC<{ children: ReactNode }> = ({ children
   };
 
   const toggleStaffStatus = async (staffId: string): Promise<{ success: boolean; message: string }> => {
-    const requesterId = currentUser?.id || 'staff-1';
+    if (!currentUser) {
+      showToast('Vui lòng đăng nhập với tài khoản Quản trị viên để khóa/mở khóa nhân viên.', 'error');
+      throw new Error('Yêu cầu đăng nhập');
+    }
+    const requesterId = currentUser.id;
     try {
       const updated = await staffApi.toggleStaffStatus(staffId, requesterId);
       setStaffList((prev) => prev.map((s) => (s.id === staffId ? updated : s)));
@@ -1131,7 +1211,11 @@ export const RestaurantProvider: React.FC<{ children: ReactNode }> = ({ children
     staffId: string,
     newPass: string,
   ): Promise<{ success: boolean; message: string }> => {
-    const requesterId = currentUser?.id || 'staff-1';
+    if (!currentUser) {
+      showToast('Vui lòng đăng nhập để thực hiện đặt lại mật khẩu.', 'error');
+      throw new Error('Yêu cầu đăng nhập');
+    }
+    const requesterId = currentUser.id;
     try {
       const res = await staffApi.resetStaffPassword(staffId, newPass, requesterId);
       showToast(res.message, 'success');

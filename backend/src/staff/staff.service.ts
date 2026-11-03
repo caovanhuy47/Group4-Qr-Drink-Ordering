@@ -142,7 +142,10 @@ export class StaffService implements OnModuleInit {
    * Dùng chung cho tất cả các service (Dishes, Banners, Reports, Staff).
    */
   async verifyStaffPermission(staffIdHeader?: string, requiredPermission?: keyof Staff): Promise<Staff> {
-    const staffId = staffIdHeader || 'staff-1';
+    if (!staffIdHeader) {
+      throw new ForbiddenException('Yêu cầu định danh tài khoản nhân viên (thiếu x-staff-id).');
+    }
+    const staffId = staffIdHeader;
     const staff = await this.staffRepo.findOne({ where: { id: staffId } });
 
     if (!staff) {

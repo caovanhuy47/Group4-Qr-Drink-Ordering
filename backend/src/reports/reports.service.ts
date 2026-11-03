@@ -7,50 +7,6 @@ import type { QueryPaymentHistoryDto } from './dto/query-payment-history.dto.js'
 import type { CreatePaymentRecordDto } from './dto/create-payment-record.dto.js';
 import { StaffService } from '../staff/staff.service.js';
 
-export interface BackendStaffInfo {
-  id: string;
-  name: string;
-  roleName: string;
-  role: string;
-  canCollectMoney: boolean;
-  status: 'active' | 'suspended';
-}
-
-export const AUTHORIZED_STAFF_REGISTRY: Record<string, BackendStaffInfo> = {
-  'staff-1': {
-    id: 'staff-1',
-    name: 'Nguyễn Văn Hùng',
-    roleName: 'Chủ quán / Quản lý',
-    role: 'admin',
-    canCollectMoney: true,
-    status: 'active',
-  },
-  'staff-2': {
-    id: 'staff-2',
-    name: 'Trần Thị Mai',
-    roleName: 'Thu ngân quầy',
-    role: 'cashier',
-    canCollectMoney: true,
-    status: 'active',
-  },
-  'staff-3': {
-    id: 'staff-3',
-    name: 'Lê Hoàng Nam',
-    roleName: 'Nhân viên phục vụ',
-    role: 'waiter',
-    canCollectMoney: true,
-    status: 'active',
-  },
-  'staff-4': {
-    id: 'staff-4',
-    name: 'Phạm Đức Tuấn',
-    roleName: 'Đầu bếp & Pha chế chính',
-    role: 'kitchen',
-    canCollectMoney: false,
-    status: 'active',
-  },
-};
-
 function getVietnamNowDateStr(): string {
   const formatter = new Intl.DateTimeFormat('en-CA', {
     timeZone: 'Asia/Ho_Chi_Minh',
@@ -126,42 +82,24 @@ export class ReportsService implements OnModuleInit {
     const totalPaidSessions = records.length;
     const totalItemsSold = records.reduce((sum, r) => sum + r.totalQuantity, 0);
 
-    // Current operational table status breakdown (synchronized with initial 8 tables)
+    // Current operational table status breakdown (synchronized with real operational tables)
     const tableStatusCounts = {
-      empty: 3,
-      ordered: 3,
-      seated: 2,
+      empty: 8,
+      ordered: 0,
+      seated: 0,
       total: 8,
     };
-    const currentUsingTables = tableStatusCounts.ordered + tableStatusCounts.seated;
+    const currentUsingTables = 0;
 
-    // Longest waiting ordered tables
-    const longestWaitingTables = [
-      {
-        tableNumber: 'BÀN 02',
-        sessionId: 'LT-2801',
-        totalQuantity: 3,
-        totalAmount: 75000,
-        firstOrderAt: '19:15',
-        waitingMinutes: 15,
-      },
-      {
-        tableNumber: 'BÀN 05',
-        sessionId: 'LT-2805',
-        totalQuantity: 4,
-        totalAmount: 143000,
-        firstOrderAt: '19:20',
-        waitingMinutes: 8,
-      },
-      {
-        tableNumber: 'BÀN 27',
-        sessionId: 'LT-2809',
-        totalQuantity: 4,
-        totalAmount: 90000,
-        firstOrderAt: '19:22',
-        waitingMinutes: 5,
-      },
-    ];
+    // Longest waiting ordered tables (empty when no active orders)
+    const longestWaitingTables: Array<{
+      tableNumber: string;
+      sessionId: string;
+      totalQuantity: number;
+      totalAmount: number;
+      firstOrderAt: string;
+      waitingMinutes: number;
+    }> = [];
 
     // Build Time-series Revenue chart data
     const chartMap = new Map<string, number>();
@@ -407,7 +345,10 @@ export class ReportsService implements OnModuleInit {
 
   async recordPayment(dto: CreatePaymentRecordDto, staffIdHeader?: string) {
     // 1. Authenticate & Authorize Staff from StaffService (MySQL)
-    const staffId = staffIdHeader || dto.staffId || 'staff-1';
+    const staffId = staffIdHeader || dto.staffId;
+    if (!staffId) {
+      throw new ForbiddenException('Yêu cầu định danh tài khoản nhân viên xác nhận thu tiền.');
+    }
     const staff = await this.staffService.verifyStaffPermission(staffId, 'canCollectMoney');
 
     // Backend provides verified identity and role to prevent client spoofing

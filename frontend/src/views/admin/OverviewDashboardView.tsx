@@ -76,13 +76,13 @@ export const OverviewDashboardView: React.FC = () => {
   const totalTables = tables.length > 0 ? tables.length : (data?.tableStatusCounts?.total ?? 8);
   const emptyTablesCount = tables.length > 0
     ? tables.filter((t) => t.status === 'empty').length
-    : (data?.tableStatusCounts?.empty ?? 3);
+    : (data?.tableStatusCounts?.empty ?? 8);
   const orderedTablesCount = tables.length > 0
     ? tables.filter((t) => t.status === 'ordered').length
-    : (data?.tableStatusCounts?.ordered ?? 3);
+    : (data?.tableStatusCounts?.ordered ?? 0);
   const seatedTablesCount = tables.length > 0
     ? tables.filter((t) => t.status === 'seated').length
-    : (data?.tableStatusCounts?.seated ?? 2);
+    : (data?.tableStatusCounts?.seated ?? 0);
   const currentUsingTablesCount = orderedTablesCount + seatedTablesCount;
 
   // Derive live waiting tables from ordered tables
@@ -100,7 +100,7 @@ export const OverviewDashboardView: React.FC = () => {
       .sort((a, b) => b.waitingMinutes - a.waitingMinutes);
   }, [tables]);
 
-  const displayWaitingTables = liveWaitingTables.length > 0 ? liveWaitingTables : (data?.longestWaitingTables || []);
+  const displayWaitingTables = liveWaitingTables;
 
   return (
     <AdminLayout
