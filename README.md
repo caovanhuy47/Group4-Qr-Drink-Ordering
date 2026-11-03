@@ -115,3 +115,19 @@ Giao diện frontend được hoàn thiện 100% từ tài liệu thiết kế m
 6. **Tối ưu Responsive cho điện thoại siêu hẹp (360 × 800)**:
    - Thu gọn nhãn chữ trên các nút header (`hidden sm:inline`), đảm bảo `scrollWidth: 360px / innerWidth: 360px` (0% overflow-x).
 
+---
+
+## Quy Chuẩn Kiểm Thử Tự Động (Testing)
+
+Hệ thống áp dụng quy chuẩn kiểm thử E2E Playwright với **ràng buộc cốt lõi không can thiệp Database** (Zero DB Interference). Chi tiết xem tại:
+- [Tài liệu Vòng đời Kiểm thử Playwright (6 Pha)](docs/testing/playwright-lifecycle.md)
+
+Lệnh chạy kiểm thử:
+```bash
+# Chạy kiểm thử tự động Playwright E2E
+npx playwright test
+
+# Chạy script xác minh chi tiết kèm xuất báo cáo và bằng chứng ảnh
+node scratch/verify_overview_lifecycle.js
+```
+

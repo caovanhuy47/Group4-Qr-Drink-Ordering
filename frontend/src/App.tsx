@@ -3,6 +3,7 @@ import { RestaurantProvider } from './contexts/RestaurantContext';
 import { useRestaurant } from './contexts/useRestaurant';
 import { DishDetailModal } from './components/customer/DishDetailModal';
 import { ToastContainer } from './components/common/ToastContainer';
+import { ErrorBoundary } from './components/common/ErrorBoundary';
 
 // Customer Views
 import { FoodLobbyView } from './views/customer/FoodLobbyView';
@@ -91,9 +92,11 @@ const MainContent: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-background text-on-surface flex flex-col w-full selection:bg-primary-soft selection:text-primary">
-      {/* Active Route Content: Natural Responsive Layout */}
+      {/* Active Route Content: Natural Responsive Layout with Error Boundary */}
       <div className="w-full flex-1">
-        {renderActiveView()}
+        <ErrorBoundary>
+          {renderActiveView()}
+        </ErrorBoundary>
       </div>
 
       {/* Dish Detail BottomSheet on Mobile, Popup on Desktop */}

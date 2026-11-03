@@ -73,16 +73,16 @@ export const OverviewDashboardView: React.FC = () => {
   };
 
   // Real-time table metrics synchronized with Table Management (RestaurantContext)
-  const totalTables = tables.length > 0 ? tables.length : (data?.tableStatusCounts.total ?? 8);
+  const totalTables = tables.length > 0 ? tables.length : (data?.tableStatusCounts?.total ?? 8);
   const emptyTablesCount = tables.length > 0
     ? tables.filter((t) => t.status === 'empty').length
-    : (data?.tableStatusCounts.empty ?? 3);
+    : (data?.tableStatusCounts?.empty ?? 3);
   const orderedTablesCount = tables.length > 0
     ? tables.filter((t) => t.status === 'ordered').length
-    : (data?.tableStatusCounts.ordered ?? 3);
+    : (data?.tableStatusCounts?.ordered ?? 3);
   const seatedTablesCount = tables.length > 0
     ? tables.filter((t) => t.status === 'seated').length
-    : (data?.tableStatusCounts.seated ?? 2);
+    : (data?.tableStatusCounts?.seated ?? 2);
   const currentUsingTablesCount = orderedTablesCount + seatedTablesCount;
 
   // Derive live waiting tables from ordered tables
@@ -401,7 +401,7 @@ export const OverviewDashboardView: React.FC = () => {
                   <div className="flex items-center gap-3">
                     <div className="text-right">
                       <span className="font-headline font-bold text-xs text-primary block">
-                        {tbl.totalAmount.toLocaleString('vi-VN')}đ
+                        {(tbl.totalAmount || 0).toLocaleString('vi-VN')}đ
                       </span>
                       <span className="text-[11px] text-error font-bold flex items-center gap-0.5 justify-end">
                         <span className="material-symbols-outlined text-[12px]">schedule</span>
@@ -462,9 +462,11 @@ export const OverviewDashboardView: React.FC = () => {
                 {/* Visual Chart Bars */}
                 <div className="flex-1 flex items-end gap-2 md:gap-3 px-2 border-b border-border pb-2">
                   {(() => {
-                    const maxRev = Math.max(...data.revenueChartData.map((d) => d.revenue), 100000);
-                    return data.revenueChartData.map((point, idx) => {
-                      const heightPercent = Math.max(6, Math.round((point.revenue / maxRev) * 100));
+                    const chartList = data.revenueChartData || [];
+                    const maxRev = Math.max(...chartList.map((d) => Number(d.revenue) || 0), 100000);
+                    return chartList.map((point, idx) => {
+                      const revVal = Number(point.revenue) || 0;
+                      const heightPercent = Math.max(6, Math.round((revVal / maxRev) * 100));
                       return (
                         <div
                           key={idx}
@@ -472,14 +474,14 @@ export const OverviewDashboardView: React.FC = () => {
                         >
                           {/* Tooltip on hover */}
                           <div className="absolute -top-8 opacity-0 group-hover:opacity-100 bg-surface-container-highest text-on-surface text-[10px] font-bold py-1 px-2 rounded-md pointer-events-none shadow-xs transition-opacity z-10 whitespace-nowrap">
-                            {point.revenue.toLocaleString('vi-VN')}đ
+                            {revVal.toLocaleString('vi-VN')}đ
                           </div>
 
                           {/* Bar */}
                           <div
                             style={{ height: `${heightPercent}%` }}
                             className={`w-full max-w-[36px] rounded-t-lg transition-all ${
-                              point.revenue > 0
+                              revVal > 0
                                 ? 'bg-gradient-to-t from-primary to-primary-container shadow-xs group-hover:opacity-90'
                                 : 'bg-surface-container-low border border-border/40'
                             }`}
@@ -546,7 +548,7 @@ export const OverviewDashboardView: React.FC = () => {
                       <div>
                         <span className="font-bold text-on-surface block leading-tight">{dish.name}</span>
                         <span className="text-[11px] text-on-surface-variant">
-                          Doanh thu: {dish.revenue.toLocaleString('vi-VN')}đ
+                          Doanh thu: {(dish.revenue ?? 0).toLocaleString('vi-VN')}đ
                         </span>
                       </div>
                     </div>
@@ -604,7 +606,7 @@ export const OverviewDashboardView: React.FC = () => {
 
                     <div className="flex items-center gap-2">
                       <span className="font-headline font-bold text-xs text-primary">
-                        {rec.totalAmount.toLocaleString('vi-VN')}đ
+                        {(rec.totalAmount || 0).toLocaleString('vi-VN')}đ
                       </span>
                       <button
                         onClick={() => handleViewSessionDetail(rec.sessionId)}

@@ -212,8 +212,15 @@ export class ReportsService implements OnModuleInit {
           quantity: 0,
           revenue: 0,
         };
-        existing.quantity += item.quantity;
-        existing.revenue += item.totalPrice;
+        const itemAny = item as any;
+        const itemQuantity = Number(item.quantity) || 1;
+        const itemRevenue =
+          Number(item.totalPrice) ||
+          Number(itemAny.subtotal) ||
+          ((Number(item.unitPrice) || Number(itemAny.price) || 0) * itemQuantity) ||
+          0;
+        existing.quantity += itemQuantity;
+        existing.revenue += itemRevenue;
         dishMap.set(item.name, existing);
       }
     }
