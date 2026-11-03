@@ -63,7 +63,7 @@ graph LR
 | **Kế Hoạch & Báo Cáo** | | |
 | `docs/superpowers/plans/` | Các kế hoạch kỹ thuật theo task (Menu, Banner, RBAC, Reload Flash, Overview, Audit) | [Thư Mục Kế Hoạch](./superpowers/plans/) |
 | `docs/reports/` | Báo cáo kiểm chứng, bằng chứng xác minh và kết quả nghiệm thu theo task | [Thư Mục Báo Cáo](./reports/) |
-| `docs/audits/` | Báo cáo khảo sát hiện trạng backend & phân loại mock (`backend-module-survey.md`) | [Báo Cáo Khảo Sát](./audits/backend-module-survey.md) |
+| `docs/audits/` | Báo cáo kiểm kê mock & khảo sát module (`mock-and-module-gap-audit.md`, `backend-module-survey.md`) | [Báo Cáo Kiểm Kê](./audits/mock-and-module-gap-audit.md) |
 | **Giao Diện & Kiểm Thử** | | |
 | `docs/ui/design-system.md` | Design System: màu sắc Quán Vỉa Hè, typography, responsive, trạng thái UI UX Pro Max | [Design System](./ui/design-system.md) |
 | `docs/testing/playwright-lifecycle.md` | Quy trình kiểm thử Playwright 6 pha chuẩn mực không can thiệp database | [Playwright Lifecycle](./testing/playwright-lifecycle.md) |
