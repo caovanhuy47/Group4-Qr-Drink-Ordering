@@ -378,7 +378,7 @@ export class DishesService implements OnModuleInit {
     }
 
     if (dto.description !== undefined) {
-      existing.description = dto.description.trim();
+      existing.description = dto.description ? dto.description.trim() : '';
     }
 
     if (dto.price !== undefined) {
@@ -403,7 +403,7 @@ export class DishesService implements OnModuleInit {
     }
 
     if (dto.badge !== undefined) {
-      existing.badge = dto.badge.trim() || null;
+      existing.badge = dto.badge ? dto.badge.trim() || null : null;
     }
 
     if (dto.badgeType !== undefined) {

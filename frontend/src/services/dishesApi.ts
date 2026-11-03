@@ -5,6 +5,82 @@ export const DEFAULT_FALLBACK_IMAGE =
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
 
+/**
+ * Chuẩn hóa payload món ăn gửi lên backend DTO.
+ * Tách biệt hoàn toàn dữ liệu hiển thị (display state như categoryName, count...)
+ * với payload nghiệp vụ (CreateDishDto / UpdateDishDto), tránh vi phạm ValidationPipe
+ * của NestJS (forbidNonWhitelisted: true).
+ */
+export function sanitizeDishPayload(data: Partial<Dish>, isCreate = false): Record<string, unknown> {
+  const payload: Record<string, unknown> = {};
+
+  if (isCreate && data.id && typeof data.id === 'string' && data.id.trim()) {
+    payload.id = data.id.trim();
+  }
+
+  if (data.name !== undefined) {
+    payload.name = typeof data.name === 'string' ? data.name.trim() : data.name;
+  }
+
+  if (data.description !== undefined) {
+    payload.description = typeof data.description === 'string' ? data.description.trim() : '';
+  }
+
+  if (data.price !== undefined) {
+    payload.price = Math.max(0, Math.floor(Number(data.price) || 0));
+  }
+
+  if (data.oldPrice !== undefined) {
+    if (data.oldPrice && Number(data.oldPrice) > 0) {
+      payload.oldPrice = Math.max(0, Math.floor(Number(data.oldPrice)));
+    } else {
+      payload.oldPrice = undefined;
+    }
+  }
+
+  if (data.image !== undefined) {
+    payload.image = typeof data.image === 'string' ? data.image.trim() : data.image;
+  }
+
+  if (data.categoryId !== undefined) {
+    payload.categoryId = typeof data.categoryId === 'string' ? data.categoryId.trim() : data.categoryId;
+  }
+
+  if (data.badge !== undefined) {
+    payload.badge = data.badge ? String(data.badge).trim() || undefined : undefined;
+  }
+
+  if (data.badgeType !== undefined) {
+    payload.badgeType = data.badgeType || undefined;
+  }
+
+  if (data.isAvailable !== undefined) {
+    payload.isAvailable = Boolean(data.isAvailable);
+  }
+
+  if (data.isArchived !== undefined) {
+    payload.isArchived = Boolean(data.isArchived);
+  }
+
+  if (Array.isArray(data.sizes)) {
+    payload.sizes = data.sizes.map((s) => ({
+      id: String(s.id),
+      name: String(s.name),
+      price: Math.max(0, Math.floor(Number(s.price) || 0)),
+    }));
+  }
+
+  if (Array.isArray(data.toppings)) {
+    payload.toppings = data.toppings.map((t) => ({
+      id: String(t.id),
+      name: String(t.name),
+      price: Math.max(0, Math.floor(Number(t.price) || 0)),
+    }));
+  }
+
+  return payload;
+}
+
 export const dishesApi = {
   async fetchDishes(
     params?: {
@@ -137,10 +213,11 @@ export const dishesApi = {
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
     if (staffId) headers['x-staff-id'] = staffId;
 
+    const payload = sanitizeDishPayload(data, true);
     const res = await fetch(`${API_BASE_URL}/api/dishes`, {
       method: 'POST',
       headers,
-      body: JSON.stringify(data),
+      body: JSON.stringify(payload),
     });
 
     if (!res.ok) {
@@ -161,10 +238,11 @@ export const dishesApi = {
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
     if (staffId) headers['x-staff-id'] = staffId;
 
+    const payload = sanitizeDishPayload(data, false);
     const res = await fetch(`${API_BASE_URL}/api/dishes/${id}`, {
       method: 'PUT',
       headers,
-      body: JSON.stringify(data),
+      body: JSON.stringify(payload),
     });
 
     if (!res.ok) {
