@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useRestaurant } from '../../contexts/useRestaurant';
+import { buildTableQrCodeUrl, buildTableOrderUrl, getPublicBaseUrl } from '../../utils/qrConfig';
 
 interface TableQrConfigModalProps {
   isOpen: boolean;
@@ -165,7 +166,7 @@ export const TableQrConfigModal: React.FC<TableQrConfigModalProps> = ({ isOpen, 
             <div className="bg-surface-container-low rounded-xl p-4 border border-border flex flex-col sm:flex-row items-center gap-4 text-center sm:text-left">
               <div className="w-28 h-28 bg-white p-2 rounded-xl shadow-xs border border-border shrink-0 flex items-center justify-center">
                 <img
-                  src={selectedQrTable.qrCodeUrl || `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=https://huycv.vn/%23/?table=${encodeURIComponent(selectedQrTable.number)}`}
+                  src={selectedQrTable.qrCodeUrl || buildTableQrCodeUrl(selectedQrTable.number)}
                   alt={`QR ${selectedQrTable.number}`}
                   className="w-full h-full object-contain"
                 />
@@ -179,10 +180,16 @@ export const TableQrConfigModal: React.FC<TableQrConfigModalProps> = ({ isOpen, 
                   <span className="text-xs px-2 py-0.5 rounded-full bg-surface-container text-on-surface-variant">
                     {selectedQrTable.area}
                   </span>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-primary/10 text-primary font-mono">
+                    Đích: {getPublicBaseUrl()}
+                  </span>
                 </div>
                 <p className="text-xs text-on-surface-variant leading-relaxed">
                   Quét mã QR này bằng camera điện thoại để khách truy cập menu, gọi món trực tiếp vào {selectedQrTable.number}.
                 </p>
+                <div className="bg-surface-container/70 rounded-md px-2 py-1 text-[11px] font-mono text-primary truncate max-w-full">
+                  {buildTableOrderUrl(selectedQrTable.number)}
+                </div>
                 <div className="pt-1 flex items-center gap-2 justify-center sm:justify-start">
                   <button
                     type="button"
@@ -193,7 +200,7 @@ export const TableQrConfigModal: React.FC<TableQrConfigModalProps> = ({ isOpen, 
                     <span>In tem QR</span>
                   </button>
                   <a
-                    href={selectedQrTable.qrCodeUrl || '#'}
+                    href={selectedQrTable.qrCodeUrl || buildTableQrCodeUrl(selectedQrTable.number)}
                     download={`QR_${selectedQrTable.number}.png`}
                     target="_blank"
                     rel="noreferrer"

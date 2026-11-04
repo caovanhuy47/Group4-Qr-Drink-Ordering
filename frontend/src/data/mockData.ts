@@ -1,4 +1,5 @@
 import type { Category, Dish, Banner, Staff, DiningTable } from '../types/restaurant';
+import { buildTableQrCodeUrl } from '../utils/qrConfig';
 
 export const INITIAL_CATEGORIES: Category[] = [
   { id: 'all', name: 'Tất cả món', icon: 'restaurant_menu', count: 46 },
@@ -254,56 +255,56 @@ export const INITIAL_TABLES: DiningTable[] = [
     number: 'BÀN 01',
     area: 'Vỉa hè trước quán',
     status: 'empty',
-    qrCodeUrl: 'https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=https://huycv.vn/%23/?table=B01',
+    qrCodeUrl: buildTableQrCodeUrl('B01'),
   },
   {
     id: 'tbl-02',
     number: 'BÀN 02',
     area: 'Vỉa hè trước quán',
     status: 'empty',
-    qrCodeUrl: 'https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=https://huycv.vn/%23/?table=B02',
+    qrCodeUrl: buildTableQrCodeUrl('B02'),
   },
   {
     id: 'tbl-03',
     number: 'BÀN 03',
     area: 'Vỉa hè trước quán',
     status: 'empty',
-    qrCodeUrl: 'https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=https://huycv.vn/%23/?table=B03',
+    qrCodeUrl: buildTableQrCodeUrl('B03'),
   },
   {
     id: 'tbl-04',
     number: 'BÀN 04',
     area: 'Vỉa hè trước quán',
     status: 'empty',
-    qrCodeUrl: 'https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=https://huycv.vn/%23/?table=B04',
+    qrCodeUrl: buildTableQrCodeUrl('B04'),
   },
   {
     id: 'tbl-05',
     number: 'BÀN 05',
     area: 'Vỉa hè trước quán',
     status: 'empty',
-    qrCodeUrl: 'https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=https://huycv.vn/%23/?table=B05',
+    qrCodeUrl: buildTableQrCodeUrl('B05'),
   },
   {
     id: 'tbl-06',
     number: 'BÀN 06',
     area: 'Khu vực trong nhà',
     status: 'empty',
-    qrCodeUrl: 'https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=https://huycv.vn/%23/?table=B06',
+    qrCodeUrl: buildTableQrCodeUrl('B06'),
   },
   {
     id: 'tbl-07',
     number: 'BÀN 07',
     area: 'Khu vực trong nhà',
     status: 'empty',
-    qrCodeUrl: 'https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=https://huycv.vn/%23/?table=B07',
+    qrCodeUrl: buildTableQrCodeUrl('B07'),
   },
   {
     id: 'tbl-08',
     number: 'BÀN 08',
     area: 'Góc phố thoáng mát',
     status: 'empty',
-    qrCodeUrl: 'https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=https://huycv.vn/%23/?table=B08',
+    qrCodeUrl: buildTableQrCodeUrl('B08'),
   },
 ];
 

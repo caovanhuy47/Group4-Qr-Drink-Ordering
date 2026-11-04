@@ -67,7 +67,8 @@ graph LR
 | **Giao Diện & Kiểm Thử** | | |
 | `docs/ui/design-system.md` | Design System: màu sắc Quán Vỉa Hè, typography, responsive, trạng thái UI UX Pro Max | [Design System](./ui/design-system.md) |
 | `docs/testing/playwright-lifecycle.md` | Quy trình kiểm thử Playwright 6 pha chuẩn mực không can thiệp database | [Playwright Lifecycle](./testing/playwright-lifecycle.md) |
-| `docs/changelog/` | Nhật ký thay đổi theo ngày (`2026-11-02.md`, `2026-11-03.md`) | [Changelog](./changelog/) |
+| `docs/testing/lan-qr-demo-guide.md` | Hướng dẫn thử nghiệm gọi món qua QR bằng điện thoại (Mạng LAN) | [Hướng Dẫn Demo LAN](./testing/lan-qr-demo-guide.md) |
+| `docs/changelog/` | Nhật ký thay đổi theo ngày (`2026-11-02.md`, `2026-11-03.md`, `2026-11-04.md`) | [Changelog](./changelog/) |
 
 ---
 

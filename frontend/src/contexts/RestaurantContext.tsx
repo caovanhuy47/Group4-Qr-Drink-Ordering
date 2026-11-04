@@ -19,6 +19,7 @@ import type {
 import {
   INITIAL_TABLES,
 } from '../data/mockData';
+import { buildTableQrCodeUrl } from '../utils/qrConfig';
 import { reportsApi } from '../services/reportsApi';
 import { dishesApi } from '../services/dishesApi';
 import { bannersApi } from '../services/bannersApi';
@@ -701,7 +702,7 @@ export const RestaurantProvider: React.FC<{ children: ReactNode }> = ({ children
       number: cleanNumber.toUpperCase().startsWith('BÀN') ? cleanNumber.toUpperCase() : `BÀN ${cleanNumber}`,
       area: area.trim() || 'Vỉa hè trước quán',
       status: 'empty',
-      qrCodeUrl: `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=https://huycv.vn/%23/?table=${encodeURIComponent(cleanNumber)}`,
+      qrCodeUrl: buildTableQrCodeUrl(cleanNumber),
     };
     setTables((prev) => [...prev, newTable]);
     showToast(`Đã thêm mới ${newTable.number} (${newTable.area})`, 'success');

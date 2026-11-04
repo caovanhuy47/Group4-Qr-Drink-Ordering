@@ -4,6 +4,7 @@
   "scripts": {
     "dev": "npm --prefix backend run dev",
     "dev:front": "npm --prefix frontend run dev",
+    "dev:lan": "npm --prefix frontend run dev:lan",
     "dev:back": "npm --prefix backend run dev",
     "start:dev": "npm --prefix backend run start:dev",
     "start": "npm --prefix backend run start",

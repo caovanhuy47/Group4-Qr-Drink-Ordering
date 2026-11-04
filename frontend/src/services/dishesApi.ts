@@ -1,9 +1,8 @@
 import type { Dish, Category } from '../types/restaurant';
+import { API_BASE_URL } from './apiConfig';
 
 export const DEFAULT_FALLBACK_IMAGE =
   'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=600&auto=format&fit=crop&q=80';
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
 
 /**
  * Chuẩn hóa payload món ăn gửi lên backend DTO.

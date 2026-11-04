@@ -1,6 +1,6 @@
 import type { Banner } from '../types/restaurant';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
+import { API_BASE_URL } from './apiConfig';
 
 export function sanitizeBannerPayload(data: Partial<Banner>, isCreate = false): Record<string, unknown> {
   const payload: Record<string, unknown> = {};
