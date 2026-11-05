@@ -1,11 +1,44 @@
 import { Injectable, OnModuleInit, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { TableSessionRecord } from './entities/table-session-record.entity.js';
+import { TableSessionRecord, OrderItemSnapshot } from './entities/table-session-record.entity.js';
 import type { QueryOverviewDto } from './dto/query-overview.dto.js';
 import type { QueryPaymentHistoryDto } from './dto/query-payment-history.dto.js';
 import type { CreatePaymentRecordDto } from './dto/create-payment-record.dto.js';
+import type { CreateActiveOrderDto } from './dto/create-active-order.dto.js';
+import type { CompleteTableDto } from './dto/complete-table.dto.js';
 import { StaffService } from '../staff/staff.service.js';
+
+export function normalizeServerTableNumber(raw: string): string {
+  const trimmed = (raw || '').trim();
+  if (/^bàn\s*/i.test(trimmed)) {
+    const digits = trimmed.replace(/^bàn\s*/i, '').padStart(2, '0');
+    return `BÀN ${digits}`;
+  }
+  const clean = trimmed.replace(/^[bB]/, '');
+  if (/^\d+$/.test(clean)) {
+    return `BÀN ${clean.padStart(2, '0')}`;
+  }
+  return trimmed.toUpperCase();
+}
+
+function getStandardTableArea(tableNumber: string): string {
+  const clean = normalizeServerTableNumber(tableNumber);
+  if (clean === 'BÀN 06' || clean === 'BÀN 07') return 'Khu vực trong nhà';
+  if (clean === 'BÀN 08') return 'Góc phố thoáng mát';
+  return 'Vỉa hè trước quán';
+}
+
+const STANDARD_OPERATIONAL_TABLES = [
+  { id: 'tbl-01', number: 'BÀN 01', area: 'Vỉa hè trước quán', qrIdentifier: 'B01' },
+  { id: 'tbl-02', number: 'BÀN 02', area: 'Vỉa hè trước quán', qrIdentifier: 'B02' },
+  { id: 'tbl-03', number: 'BÀN 03', area: 'Vỉa hè trước quán', qrIdentifier: 'B03' },
+  { id: 'tbl-04', number: 'BÀN 04', area: 'Vỉa hè trước quán', qrIdentifier: 'B04' },
+  { id: 'tbl-05', number: 'BÀN 05', area: 'Vỉa hè trước quán', qrIdentifier: 'B05' },
+  { id: 'tbl-06', number: 'BÀN 06', area: 'Khu vực trong nhà', qrIdentifier: 'B06' },
+  { id: 'tbl-07', number: 'BÀN 07', area: 'Khu vực trong nhà', qrIdentifier: 'B07' },
+  { id: 'tbl-08', number: 'BÀN 08', area: 'Góc phố thoáng mát', qrIdentifier: 'B08' },
+];
 
 function getVietnamNowDateStr(): string {
   const formatter = new Intl.DateTimeFormat('en-CA', {
@@ -82,16 +115,21 @@ export class ReportsService implements OnModuleInit {
     const totalPaidSessions = records.length;
     const totalItemsSold = records.reduce((sum, r) => sum + r.totalQuantity, 0);
 
-    // Current operational table status breakdown (synchronized with real operational tables)
-    const tableStatusCounts = {
-      empty: 8,
-      ordered: 0,
-      seated: 0,
-      total: 8,
-    };
-    const currentUsingTables = 0;
+    // Current operational table status breakdown (synchronized with real operational tables in MySQL)
+    const operationalTables = await this.getActiveTables();
+    const orderedCount = operationalTables.filter((t) => t.status === 'ordered').length;
+    const seatedCount = operationalTables.filter((t) => t.status === 'seated').length;
+    const emptyCount = operationalTables.filter((t) => t.status === 'empty').length;
 
-    // Longest waiting ordered tables (empty when no active orders)
+    const tableStatusCounts = {
+      empty: emptyCount,
+      ordered: orderedCount,
+      seated: seatedCount,
+      total: operationalTables.length,
+    };
+    const currentUsingTables = orderedCount + seatedCount;
+
+    // Longest waiting ordered tables
     const longestWaitingTables: Array<{
       tableNumber: string;
       sessionId: string;
@@ -99,7 +137,17 @@ export class ReportsService implements OnModuleInit {
       totalAmount: number;
       firstOrderAt: string;
       waitingMinutes: number;
-    }> = [];
+    }> = operationalTables
+      .filter((t) => t.status === 'ordered' && t.currentSession)
+      .map((t) => ({
+        tableNumber: t.number,
+        sessionId: t.currentSession!.sessionId,
+        totalQuantity: t.currentSession!.totalQuantity,
+        totalAmount: t.currentSession!.totalAmount,
+        firstOrderAt: t.currentSession!.firstOrderAt,
+        waitingMinutes: t.currentSession!.waitingMinutes,
+      }))
+      .sort((a, b) => b.waitingMinutes - a.waitingMinutes);
 
     // Build Time-series Revenue chart data
     const chartMap = new Map<string, number>();
@@ -354,13 +402,34 @@ export class ReportsService implements OnModuleInit {
     // Backend provides verified identity and role to prevent client spoofing
     const verifiedStaffName = `${staff.name} (${staff.roleName})`;
 
-    // 2. Check Idempotency (prevent duplicate recording)
+    // 2. Check Idempotency / Update Active Session (prevent duplicate recording)
     const existing = await this.sessionRepo.findOne({ where: { sessionId: dto.sessionId } });
     if (existing) {
+      if (existing.confirmedAt) {
+        return {
+          success: true,
+          message: 'Lượt bàn đã được ghi nhận trước đó (idempotent)',
+          record: existing,
+        };
+      }
+      // If session exists in 'ordered' status from guest ordering, transition it to 'seated'
+      existing.status = 'seated';
+      existing.confirmedAt = dto.confirmedAt ? new Date(dto.confirmedAt) : new Date();
+      existing.confirmedBy = verifiedStaffName;
+      if (dto.items && dto.items.length > 0) {
+        existing.items = dto.items;
+      }
+      if (Number(dto.totalQuantity) > 0) {
+        existing.totalQuantity = Number(dto.totalQuantity);
+      }
+      if (Number(dto.totalAmount) > 0) {
+        existing.totalAmount = Number(dto.totalAmount);
+      }
+      const updated = await this.sessionRepo.save(existing);
       return {
         success: true,
-        message: 'Lượt bàn đã được ghi nhận trước đó (idempotent)',
-        record: existing,
+        message: 'Đã xác nhận phục vụ và thu tiền thành công',
+        record: updated,
       };
     }
 
@@ -415,6 +484,192 @@ export class ReportsService implements OnModuleInit {
       }
       throw err;
     }
+  }
+
+  /**
+   * Khách đặt món qua mã QR trên điện thoại (Không yêu cầu đăng nhập)
+   * Tự động tạo phiên phục vụ mới hoặc gom thêm món vào phiên đang ngồi của bàn.
+   */
+  async createOrAppendActiveOrder(dto: CreateActiveOrderDto) {
+    const rawTable = dto.tableNumber?.trim();
+    if (!rawTable) {
+      throw new BadRequestException('Mã bàn không được để trống.');
+    }
+    const normTable = normalizeServerTableNumber(rawTable);
+
+    if (!dto.items || dto.items.length === 0) {
+      throw new BadRequestException('Danh sách món không được để trống khi đặt món.');
+    }
+
+    // Map and sanitize incoming items
+    const newItems: OrderItemSnapshot[] = dto.items.map((item, idx) => ({
+      itemId: item.itemId || `item-${Date.now()}-${idx}-${Math.random().toString(36).slice(2, 6)}`,
+      dishId: item.dishId,
+      name: item.name,
+      sizeName: item.sizeName || 'Tiêu chuẩn',
+      toppings: item.toppings || [],
+      notes: item.notes || dto.orderNotes || '',
+      quantity: Number(item.quantity) || 1,
+      unitPrice: Number(item.unitPrice) || 0,
+      totalPrice: Number(item.totalPrice) || ((Number(item.unitPrice) || 0) * (Number(item.quantity) || 1)),
+    }));
+
+    const addedQuantity = newItems.reduce((sum, i) => sum + i.quantity, 0);
+    const addedAmount = newItems.reduce((sum, i) => sum + i.totalPrice, 0);
+
+    // Look for active session on this table (status IN ('ordered', 'seated') AND completedAt IS NULL)
+    const activeSession = await this.sessionRepo
+      .createQueryBuilder('r')
+      .where('r.tableNumber = :tableNumber', { tableNumber: normTable })
+      .andWhere('r.status IN (:...statuses)', { statuses: ['ordered', 'seated'] })
+      .andWhere('r.completedAt IS NULL')
+      .orderBy('r.createdAt', 'DESC')
+      .getOne();
+
+    if (activeSession) {
+      // Append / merge items into existing session (US-OPS-04)
+      const mergedItems = [...(activeSession.items || []), ...newItems];
+      activeSession.items = mergedItems;
+      activeSession.totalQuantity = (activeSession.totalQuantity || 0) + addedQuantity;
+      activeSession.totalAmount = (activeSession.totalAmount || 0) + addedAmount;
+      // If table was already seated, customer calling more items turns status back to 'ordered' for kitchen/staff attention
+      activeSession.status = 'ordered';
+
+      const saved = await this.sessionRepo.save(activeSession);
+      return {
+        success: true,
+        message: `Đã bổ sung ${addedQuantity} phần món vào phiên phục vụ của ${normTable}`,
+        record: saved,
+        sessionId: saved.sessionId,
+        tableNumber: normTable,
+        status: saved.status,
+      };
+    }
+
+    // Create new session for this table
+    const area = dto.area || getStandardTableArea(normTable);
+    const sessionId = `LT-${Math.floor(2000 + Math.random() * 8000)}`;
+
+    const newRecord = this.sessionRepo.create({
+      sessionId,
+      tableNumber: normTable,
+      area,
+      status: 'ordered',
+      firstOrderAt: new Date(),
+      totalQuantity: addedQuantity,
+      totalAmount: addedAmount,
+      items: newItems,
+    });
+
+    const saved = await this.sessionRepo.save(newRecord);
+    return {
+      success: true,
+      message: `Đã tiếp nhận đơn gọi món mới cho ${normTable}`,
+      record: saved,
+      sessionId: saved.sessionId,
+      tableNumber: normTable,
+      status: saved.status,
+    };
+  }
+
+  /**
+   * Lấy danh sách toàn bộ các bàn kèm trạng thái hoạt động thực tế từ MySQL
+   */
+  async getActiveTables() {
+    const activeRecords = await this.sessionRepo
+      .createQueryBuilder('r')
+      .where('r.status IN (:...statuses)', { statuses: ['ordered', 'seated'] })
+      .andWhere('r.completedAt IS NULL')
+      .orderBy('r.firstOrderAt', 'ASC')
+      .getMany();
+
+    const now = Date.now();
+
+    return STANDARD_OPERATIONAL_TABLES.map((std) => {
+      const match = activeRecords.find(
+        (r) => r.tableNumber === std.number || normalizeServerTableNumber(r.tableNumber) === std.number,
+      );
+
+      if (!match) {
+        return {
+          id: std.id,
+          number: std.number,
+          area: std.area,
+          status: 'empty',
+          currentSession: null,
+        };
+      }
+
+      const orderTime = match.firstOrderAt ? new Date(match.firstOrderAt) : new Date();
+      const waitingMinutes = Math.max(1, Math.floor((now - orderTime.getTime()) / 60000));
+      const firstOrderAtFormatted = orderTime.toLocaleTimeString('vi-VN', {
+        timeZone: 'Asia/Ho_Chi_Minh',
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+
+      return {
+        id: std.id,
+        number: std.number,
+        area: std.area,
+        status: match.status,
+        currentSession: {
+          sessionId: match.sessionId,
+          tableId: std.id,
+          tableNumber: std.number,
+          firstOrderAt: firstOrderAtFormatted,
+          firstOrderAtIso: match.firstOrderAt ? new Date(match.firstOrderAt).toISOString() : null,
+          waitingMinutes,
+          items: match.items || [],
+          totalQuantity: match.totalQuantity,
+          totalAmount: match.totalAmount,
+          confirmedAt: match.confirmedAt ? new Date(match.confirmedAt).toISOString() : null,
+          confirmedBy: match.confirmedBy || null,
+        },
+      };
+    });
+  }
+
+  /**
+   * Nhân viên/quản lý giải phóng bàn về trạng thái Trống
+   * Nghiệp vụ: Chặn nếu bàn đang có đơn 'ordered' chưa phục vụ & thu tiền.
+   */
+  async completeTableSession(dto: CompleteTableDto, staffIdHeader?: string) {
+    const staffId = staffIdHeader || dto.staffId;
+    if (staffId) {
+      await this.staffService.verifyStaffPermission(staffId, 'canCollectMoney');
+    }
+
+    const normTable = normalizeServerTableNumber(dto.tableNumber);
+
+    const activeSession = await this.sessionRepo
+      .createQueryBuilder('r')
+      .where('r.tableNumber = :tableNumber', { tableNumber: normTable })
+      .andWhere('r.status IN (:...statuses)', { statuses: ['ordered', 'seated'] })
+      .andWhere('r.completedAt IS NULL')
+      .orderBy('r.createdAt', 'DESC')
+      .getOne();
+
+    if (!activeSession) {
+      return {
+        success: true,
+        message: `Bàn ${normTable} hiện tại đang ở trạng thái Trống.`,
+      };
+    }
+
+    // Business rule: If table is 'ordered' (unpaid / unserved), reject clearing table
+    if (activeSession.status === 'ordered') {
+      throw new BadRequestException('Bàn đang có đơn chưa phục vụ và thu tiền, không thể giải phóng bàn.');
+    }
+
+    activeSession.status = 'completed';
+    activeSession.completedAt = new Date();
+    await this.sessionRepo.save(activeSession);
+
+    return {
+      success: true,
+      message: `Đã giải phóng ${normTable} về trạng thái Trống thành công.`,
+    };
   }
 
   // Seed realistic historical operational records if the database table is empty

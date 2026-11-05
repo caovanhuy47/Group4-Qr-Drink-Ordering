@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { AdminLayout } from '../../components/admin/AdminLayout';
 import { useRestaurant } from '../../contexts/useRestaurant';
 import { TableDetailDrawer } from '../../components/admin/TableDetailDrawer';
@@ -22,7 +22,27 @@ export const TableManagementView: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | TableOperationalStatus>('all');
   const [processingTableId, setProcessingTableId] = useState<string | null>(null);
-  const [isConnected] = useState<boolean>(true);
+  const [isConnected, setIsConnected] = useState<boolean>(true);
+
+  // Auto-polling operational tables from backend MySQL every 4 seconds
+  useEffect(() => {
+    let isMounted = true;
+    const pollTables = async () => {
+      try {
+        const ok = await refreshTables();
+        if (isMounted) setIsConnected(ok !== false);
+      } catch {
+        if (isMounted) setIsConnected(false);
+      }
+    };
+
+    pollTables();
+    const interval = setInterval(pollTables, 4000);
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, [refreshTables]);
 
   const canCollect = currentUser?.canCollectMoney !== false;
   const isAdmin = currentUser?.role === 'admin' || !currentUser;
@@ -76,8 +96,8 @@ export const TableManagementView: React.FC = () => {
     }
   };
 
-  const handleMarkEmpty = (table: DiningTable) => {
-    markTableEmpty(table.id);
+  const handleMarkEmpty = async (table: DiningTable) => {
+    await markTableEmpty(table.id);
   };
 
   return (

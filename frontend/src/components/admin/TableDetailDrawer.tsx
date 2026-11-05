@@ -32,9 +32,11 @@ export const TableDetailDrawer: React.FC<TableDetailDrawerProps> = ({ table, onC
     }
   };
 
-  const handleMarkEmpty = () => {
-    markTableEmpty(table.id);
-    onClose();
+  const handleMarkEmpty = async () => {
+    const res = await markTableEmpty(table.id);
+    if (res.success) {
+      onClose();
+    }
   };
 
   return (
@@ -118,46 +120,55 @@ export const TableDetailDrawer: React.FC<TableDetailDrawerProps> = ({ table, onC
               </div>
             ) : (
               <div className="divide-y divide-border/60">
-                {session.items.map((item, idx) => (
-                  <div key={`${item.itemId}-${idx}`} className="py-3 flex items-start justify-between gap-3 text-xs">
-                    <div className="flex items-start gap-2.5 min-w-0">
-                      <span className="w-6 h-6 rounded-md bg-primary-soft text-primary font-bold flex items-center justify-center shrink-0 mt-0.5">
-                        {item.quantity}x
-                      </span>
-                      <div className="min-w-0">
-                        <span className="font-bold text-sm text-on-surface block leading-tight">
-                          {item.name}
+                {session.items.map((item, idx) => {
+                  const sizeName = item.selectedSize?.name || (item as any).sizeName;
+                  const toppingsList: string[] = Array.isArray(item.selectedToppings)
+                    ? item.selectedToppings.map((t) => (typeof t === 'string' ? t : t.name))
+                    : Array.isArray((item as any).toppings)
+                    ? (item as any).toppings
+                    : [];
+
+                  return (
+                    <div key={`${item.itemId || item.dishId}-${idx}`} className="py-3 flex items-start justify-between gap-3 text-xs">
+                      <div className="flex items-start gap-2.5 min-w-0">
+                        <span className="w-6 h-6 rounded-md bg-primary-soft text-primary font-bold flex items-center justify-center shrink-0 mt-0.5">
+                          {item.quantity}x
                         </span>
-                        {(item.selectedSize.price > 0 || item.selectedSize.name !== 'Tiêu chuẩn') && (
-                          <span className="text-[11px] text-on-surface-variant block mt-0.5">
-                            Quy cách: {item.selectedSize.name}
+                        <div className="min-w-0">
+                          <span className="font-bold text-sm text-on-surface block leading-tight">
+                            {item.name}
                           </span>
-                        )}
-                        {item.selectedToppings.length > 0 && (
-                          <span className="text-[11px] text-on-surface-variant block">
-                            Topping: {item.selectedToppings.map((t) => t.name).join(', ')}
-                          </span>
-                        )}
-                        {item.notes && (
-                          <span className="text-[11px] text-secondary font-medium block italic mt-0.5">
-                            Ghi chú: {item.notes}
+                          {sizeName && sizeName !== 'Tiêu chuẩn' && sizeName !== 'Mặc định' && (
+                            <span className="text-[11px] text-on-surface-variant block mt-0.5">
+                              Quy cách: {sizeName}
+                            </span>
+                          )}
+                          {toppingsList.length > 0 && (
+                            <span className="text-[11px] text-on-surface-variant block">
+                              Topping: {toppingsList.join(', ')}
+                            </span>
+                          )}
+                          {item.notes && (
+                            <span className="text-[11px] text-secondary font-medium block italic mt-0.5">
+                              Ghi chú: {item.notes}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="text-right shrink-0">
+                        <span className="font-headline font-bold text-xs text-on-surface block">
+                          {item.totalPrice.toLocaleString('vi-VN')}đ
+                        </span>
+                        {item.quantity > 1 && (
+                          <span className="text-[10px] text-on-surface-variant block">
+                            ({item.unitPrice.toLocaleString('vi-VN')}đ/phần)
                           </span>
                         )}
                       </div>
                     </div>
-
-                    <div className="text-right shrink-0">
-                      <span className="font-headline font-bold text-xs text-on-surface block">
-                        {item.totalPrice.toLocaleString('vi-VN')}đ
-                      </span>
-                      {item.quantity > 1 && (
-                        <span className="text-[10px] text-on-surface-variant block">
-                          ({item.unitPrice.toLocaleString('vi-VN')}đ/phần)
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
 

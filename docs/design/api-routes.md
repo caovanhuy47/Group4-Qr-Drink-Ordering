@@ -53,12 +53,15 @@ Tài liệu đặc tả toàn bộ các endpoints REST API của hệ thống **
 
 ---
 
-## 4. Phân Hệ Báo Cáo & Thu Tiền (`/api/reports`)
+## 4. Phân Hệ Báo Cáo, Quản Lý Bàn & Đặt Món (`/api/reports`)
 
 | Phương Thức | Đường Dẫn | Tiêu Đề Yêu Cầu | Dữ Liệu Gửi Lên | Quyền Hạn | Mô Tả Chức Năng |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| `GET` | `/api/reports/overview` | `x-staff-id: <id>` | `?period=today` | `canViewOverview` | Thống kê doanh thu, biểu đồ giờ, top món bán chạy |
+| `GET` | `/api/reports/tables` | Không | Không | Công khai nội bộ | Lấy trạng thái hoạt động thực tế của 8 bàn từ MySQL |
+| `POST` | `/api/reports/active-orders` | Không | `CreateActiveOrderDto` | Công khai (Quét QR) | Khách gửi đơn gọi món từ điện thoại (Tạo mới hoặc gom phiên) |
+| `POST` | `/api/reports/tables/complete` | `x-staff-id: <id>` | `CompleteTableDto` | `canCollectMoney` | Nhân viên giải phóng bàn về Trống (Chặn nếu chưa thu tiền) |
+| `POST` | `/api/reports/payments` | `x-staff-id: <id>` | `CreatePaymentRecordDto` | `canCollectMoney` | Xác nhận phục vụ và thu tiền tại bàn (Idempotent) |
+| `GET` | `/api/reports/overview` | `x-staff-id: <id>` | `?period=today` | `canViewOverview` | Thống kê doanh thu, biểu đồ giờ, top món bán chạy, bàn chờ lâu |
 | `GET` | `/api/reports/payment-history` | `x-staff-id: <id>` | `QueryPaymentHistoryDto` | `canViewHistory` | Tra cứu lịch sử hóa đơn thu tiền có phân trang |
 | `GET` | `/api/reports/payment-history/:id`| `x-staff-id: <id>` | Không | `canViewHistory` | Xem chi tiết snapshot món của hóa đơn |
-| `POST` | `/api/reports/payments` | `x-staff-id: <id>` | `CreatePaymentRecordDto` | `canCollectMoney` | Xác nhận phục vụ và thu tiền tại bàn (Idempotent) |
 

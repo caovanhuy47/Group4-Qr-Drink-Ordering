@@ -110,9 +110,9 @@ export interface RestaurantContextType {
   isTableQrConfigModalOpen: boolean;
   setIsTableQrConfigModalOpen: (open: boolean) => void;
   markTableServedAndPaid: (tableId: string) => Promise<{ success: boolean; message: string }>;
-  markTableEmpty: (tableId: string) => { success: boolean; message: string };
+  markTableEmpty: (tableId: string) => Promise<{ success: boolean; message: string }>;
   addNewTable: (number: string, area: string) => void;
-  refreshTables: () => void;
+  refreshTables: () => Promise<boolean>;
 }
 
 export const RestaurantContext = createContext<RestaurantContextType | undefined>(undefined);

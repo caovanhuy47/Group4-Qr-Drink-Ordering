@@ -190,4 +190,86 @@ export const reportsApi = {
 
     return res.json();
   },
+
+  async fetchActiveTables(): Promise<any[]> {
+    const res = await fetch(`${API_BASE_URL}/api/reports/tables`);
+    if (!res.ok) {
+      throw new Error(`Lỗi máy chủ: HTTP ${res.status}`);
+    }
+    return res.json();
+  },
+
+  async submitActiveOrder(data: {
+    tableNumber: string;
+    items: Array<{
+      itemId?: string;
+      dishId: string;
+      name: string;
+      sizeName?: string;
+      toppings?: string[];
+      notes?: string;
+      quantity: number;
+      unitPrice: number;
+      totalPrice: number;
+    }>;
+    area?: string;
+    orderNotes?: string;
+    totalQuantity?: number;
+    totalAmount?: number;
+  }): Promise<{
+    success: boolean;
+    message: string;
+    record?: any;
+    sessionId: string;
+    tableNumber: string;
+    status: string;
+  }> {
+    const res = await fetch(`${API_BASE_URL}/api/reports/active-orders`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+
+    if (!res.ok) {
+      let errMsg = `Lỗi máy chủ (${res.status})`;
+      try {
+        const errJson = await res.json();
+        if (errJson && errJson.message) {
+          errMsg = Array.isArray(errJson.message) ? errJson.message.join(', ') : errJson.message;
+        }
+      } catch {}
+      throw new Error(errMsg);
+    }
+
+    return res.json();
+  },
+
+  async completeTableSession(data: {
+    tableNumber: string;
+    staffId?: string;
+  }): Promise<{ success: boolean; message: string }> {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (data.staffId) {
+      headers['x-staff-id'] = data.staffId;
+    }
+
+    const res = await fetch(`${API_BASE_URL}/api/reports/tables/complete`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(data),
+    });
+
+    if (!res.ok) {
+      let errMsg = `Lỗi máy chủ (${res.status})`;
+      try {
+        const errJson = await res.json();
+        if (errJson && errJson.message) {
+          errMsg = Array.isArray(errJson.message) ? errJson.message.join(', ') : errJson.message;
+        }
+      } catch {}
+      throw new Error(errMsg);
+    }
+
+    return res.json();
+  },
 };

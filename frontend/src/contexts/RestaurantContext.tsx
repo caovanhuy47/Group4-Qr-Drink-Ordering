@@ -14,7 +14,6 @@ import type {
   CustomerUser,
   DiningTable,
   TableSession,
-  TableOrderItem,
 } from '../types/restaurant';
 import {
   INITIAL_TABLES,
@@ -586,6 +585,37 @@ export const RestaurantProvider: React.FC<{ children: ReactNode }> = ({ children
   const [selectedTableForDetail, setSelectedTableForDetail] = useState<DiningTable | null>(null);
   const [isTableQrConfigModalOpen, setIsTableQrConfigModalOpen] = useState<boolean>(false);
 
+  // Sync real-time tables with backend MySQL
+  const refreshTables = useCallback(async (): Promise<boolean> => {
+    try {
+      const fresh = await reportsApi.fetchActiveTables();
+      if (Array.isArray(fresh) && fresh.length > 0) {
+        setTables(fresh);
+        return true;
+      }
+    } catch (err) {
+      console.warn('Lỗi khi nạp danh sách bàn từ server:', err);
+    }
+    return false;
+  }, [setTables]);
+
+  // Initial load of operational tables from MySQL on app startup
+  useEffect(() => {
+    let isMounted = true;
+    reportsApi.fetchActiveTables()
+      .then((data) => {
+        if (isMounted && Array.isArray(data) && data.length > 0) {
+          setTables(data);
+        }
+      })
+      .catch((err) => {
+        console.warn('Không thể nạp danh sách bàn ban đầu:', err);
+      });
+    return () => {
+      isMounted = false;
+    };
+  }, [setTables]);
+
   const markTableServedAndPaid = async (tableId: string): Promise<{ success: boolean; message: string }> => {
     if (!currentUser) {
       showToast('Vui lòng đăng nhập với tài khoản nhân viên để xác nhận thu tiền tại bàn.', 'error');
@@ -620,9 +650,9 @@ export const RestaurantProvider: React.FC<{ children: ReactNode }> = ({ children
           itemId: i.itemId,
           dishId: i.dishId,
           name: i.name,
-          sizeName: i.selectedSize.name,
-          toppings: i.selectedToppings.map((t) => t.name),
-          notes: i.notes,
+          sizeName: i.selectedSize?.name || 'Tiêu chuẩn',
+          toppings: i.selectedToppings?.map((t) => t.name) || [],
+          notes: i.notes || '',
           quantity: i.quantity,
           unitPrice: i.unitPrice,
           totalPrice: i.totalPrice,
@@ -653,6 +683,8 @@ export const RestaurantProvider: React.FC<{ children: ReactNode }> = ({ children
         setSelectedTableForDetail(updatedTable);
       }
 
+      refreshTables().catch(() => {});
+
       showToast(
         `Đã phục vụ & thu đủ ${updatedSession.totalAmount.toLocaleString('vi-VN')}đ tại ${targetTable.number}! Bàn chuyển sang trạng thái "Đang ngồi".`,
         'success'
@@ -665,7 +697,7 @@ export const RestaurantProvider: React.FC<{ children: ReactNode }> = ({ children
     }
   };
 
-  const markTableEmpty = (tableId: string): { success: boolean; message: string } => {
+  const markTableEmpty = async (tableId: string): Promise<{ success: boolean; message: string }> => {
     const targetTable = tables.find((t) => t.id === tableId);
     if (!targetTable) {
       return { success: false, message: 'Bàn không tồn tại' };
@@ -677,20 +709,33 @@ export const RestaurantProvider: React.FC<{ children: ReactNode }> = ({ children
       return { success: false, message: 'Chưa phục vụ và thu tiền' };
     }
 
-    const updatedTable: DiningTable = {
-      ...targetTable,
-      status: 'empty',
-      currentSession: undefined,
-    };
+    try {
+      await reportsApi.completeTableSession({
+        tableNumber: targetTable.number,
+        staffId: currentUser?.id,
+      });
 
-    setTables((prev) => prev.map((t) => (t.id === tableId ? updatedTable : t)));
+      const updatedTable: DiningTable = {
+        ...targetTable,
+        status: 'empty',
+        currentSession: undefined,
+      };
 
-    if (selectedTableForDetail && selectedTableForDetail.id === tableId) {
-      setSelectedTableForDetail(updatedTable);
+      setTables((prev) => prev.map((t) => (t.id === tableId ? updatedTable : t)));
+
+      if (selectedTableForDetail && selectedTableForDetail.id === tableId) {
+        setSelectedTableForDetail(updatedTable);
+      }
+
+      refreshTables().catch(() => {});
+
+      showToast(`${targetTable.number} đã sẵn sàng đón lượt khách mới!`, 'info');
+      return { success: true, message: 'Đã chuyển bàn về Trống' };
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : 'Lỗi khi giải phóng bàn';
+      showToast(errMsg, 'error');
+      return { success: false, message: errMsg };
     }
-
-    showToast(`${targetTable.number} đã sẵn sàng đón lượt khách mới!`, 'info');
-    return { success: true, message: 'Đã chuyển bàn về Trống' };
   };
 
   const addNewTable = (number: string, area: string) => {
@@ -708,25 +753,6 @@ export const RestaurantProvider: React.FC<{ children: ReactNode }> = ({ children
     showToast(`Đã thêm mới ${newTable.number} (${newTable.area})`, 'success');
   };
 
-  const refreshTables = () => {
-    // Refresh and re-evaluate waiting minutes
-    setTables((prev) =>
-      prev.map((t) => {
-        if (t.status === 'ordered' && t.currentSession) {
-          return {
-            ...t,
-            currentSession: {
-              ...t.currentSession,
-              waitingMinutes: t.currentSession.waitingMinutes + 1,
-            },
-          };
-        }
-        return t;
-      })
-    );
-    showToast('Dữ liệu bàn đã được đồng bộ mới nhất!', 'info');
-  };
-
   const submitOrder = async (orderNotes?: string): Promise<{ success: boolean; message: string }> => {
     if (cart.length === 0) {
       showToast('Giỏ hàng đang trống, vui lòng chọn món trước khi đặt', 'error');
@@ -734,7 +760,7 @@ export const RestaurantProvider: React.FC<{ children: ReactNode }> = ({ children
     }
 
     try {
-      // Validate order items against real backend database
+      // 1. Validate order items against real backend database
       const valPayload = cart.map((c) => ({
         cartItemId: c.cartItemId,
         dishId: c.dishId,
@@ -777,7 +803,33 @@ export const RestaurantProvider: React.FC<{ children: ReactNode }> = ({ children
 
       // Backend calculated verified total amount
       const finalAmount = valResult.totalAmount ?? cartTotalPrice;
-      const orderId = `DH-${Math.floor(1000 + Math.random() * 9000)}`;
+
+      // 2. Persist real active order to Backend MySQL
+      const orderItemsPayload = cart.map((c) => ({
+        itemId: c.cartItemId,
+        dishId: c.dishId,
+        name: c.name,
+        sizeName: c.selectedSize?.name || 'Tiêu chuẩn',
+        toppings: c.selectedToppings?.map((t) => t.name) || [],
+        notes: c.notes || orderNotes || '',
+        quantity: c.quantity,
+        unitPrice: c.totalPrice / c.quantity,
+        totalPrice: c.totalPrice,
+      }));
+
+      const orderRes = await reportsApi.submitActiveOrder({
+        tableNumber: currentTable,
+        orderNotes,
+        totalQuantity: cartTotalCount,
+        totalAmount: finalAmount,
+        items: orderItemsPayload,
+      });
+
+      if (!orderRes.success) {
+        throw new Error(orderRes.message || 'Không thể gửi đơn lên máy chủ');
+      }
+
+      const orderId = orderRes.sessionId || `DH-${Math.floor(1000 + Math.random() * 9000)}`;
       const orderTime = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
 
       const newOrder: Order = {
@@ -791,55 +843,15 @@ export const RestaurantProvider: React.FC<{ children: ReactNode }> = ({ children
       };
       setCurrentOrder(newOrder);
 
-      // Sync to Table Management (real-time order reflection)
-      const orderItems: TableOrderItem[] = cart.map((c) => ({
-        itemId: c.cartItemId,
-        dishId: c.dishId,
-        name: c.name,
-        selectedSize: c.selectedSize,
-        selectedToppings: c.selectedToppings,
-        notes: c.notes,
-        quantity: c.quantity,
-        unitPrice: c.totalPrice / c.quantity,
-        totalPrice: c.totalPrice,
-      }));
-
-      setTables((prev) =>
-        prev.map((t) => {
-          // Match table number (e.g. "Bàn 05" vs "BÀN 05")
-          if (t.number.toLowerCase() === currentTable.toLowerCase()) {
-            const existingSession = t.currentSession;
-            const mergedItems: TableOrderItem[] = existingSession
-              ? [...existingSession.items, ...orderItems]
-              : orderItems;
-
-            const newSession: TableSession = {
-              sessionId: existingSession ? existingSession.sessionId : `LT-${Math.floor(2000 + Math.random() * 8000)}`,
-              tableId: t.id,
-              tableNumber: t.number,
-              firstOrderAt: existingSession ? existingSession.firstOrderAt : orderTime,
-              waitingMinutes: 1,
-              items: mergedItems,
-              totalQuantity: (existingSession?.totalQuantity || 0) + cartTotalCount,
-              totalAmount: (existingSession?.totalAmount || 0) + finalAmount,
-            };
-
-            return {
-              ...t,
-              status: 'ordered',
-              currentSession: newSession,
-            };
-          }
-          return t;
-        })
-      );
+      // 3. Immediately re-sync tables from backend to reflect newly created order
+      await refreshTables().catch(() => {});
 
       setCart([]);
       setViewRoute('order-tracking');
       showToast(`Đã gửi đơn gọi món thành công cho ${currentTable}!`, 'success');
       return { success: true, message: 'Đặt món thành công' };
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Lỗi khi kiểm tra thực đơn';
+      const msg = err instanceof Error ? err.message : 'Lỗi khi gửi đơn gọi món';
       showToast(msg, 'error');
       return { success: false, message: msg };
     }
