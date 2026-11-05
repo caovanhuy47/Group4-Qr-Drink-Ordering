@@ -7,6 +7,7 @@ import { ReportsModule } from './reports/reports.module.js';
 import { DishesModule } from './dishes/dishes.module.js';
 import { BannersModule } from './banners/banners.module.js';
 import { StaffModule } from './staff/staff.module.js';
+import { MediaModule } from './media/media.module.js';
 
 try {
   process.loadEnvFile();
@@ -37,6 +38,7 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
     DishesModule,
     BannersModule,
     StaffModule,
+    MediaModule,
   ],
   controllers: [AppController],
   providers: [AppService],

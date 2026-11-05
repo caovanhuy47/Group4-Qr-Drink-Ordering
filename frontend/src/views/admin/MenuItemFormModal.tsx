@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import type { Dish, SizeOption, Topping } from '../../types/restaurant';
 import { useRestaurant } from '../../contexts/useRestaurant';
+import { ImageUploader } from '../../components/admin/ImageUploader';
 
 interface MenuItemFormModalProps {
   dish: Dish | null;
@@ -28,7 +29,7 @@ export const MenuItemFormModal: React.FC<MenuItemFormModalProps> = ({ dish, onCl
   const [badgeType, setBadgeType] = useState<'hot' | 'new' | 'veg' | 'special'>(
     dish?.badgeType || 'hot'
   );
-  const [image, setImage] = useState<string>(dish?.image || DEFAULT_FALLBACK_IMAGE);
+  const [image, setImage] = useState<string>(dish?.image || '');
   const [isAvailable, setIsAvailable] = useState<boolean>(dish ? dish.isAvailable : true);
 
   const [sizes] = useState<SizeOption[]>(
@@ -79,17 +80,17 @@ export const MenuItemFormModal: React.FC<MenuItemFormModalProps> = ({ dish, onCl
 
     const trimmedImage = image.trim();
     if (!trimmedImage) {
-      setErrorMessage('Vui lòng nhập đường dẫn ảnh món ăn');
+      setErrorMessage('Vui lòng chọn ảnh từ máy hoặc nhập liên kết ảnh hợp lệ');
       return;
     }
 
-    // Disallow local machine file paths (C:\, file://) and temporary blob URLs per Task D
+    // Disallow local machine file paths (C:\, file://) and temporary blob URLs
     if (
       trimmedImage.startsWith('file://') ||
       trimmedImage.startsWith('blob:') ||
       /^[a-zA-Z]:\\/.test(trimmedImage)
     ) {
-      setErrorMessage('Không dùng đường dẫn file máy cá nhân hoặc blob tạm. Vui lòng dùng URL trực tuyến (https://...).');
+      setErrorMessage('Không dùng đường dẫn file máy cá nhân hoặc blob tạm. Vui lòng tải ảnh từ máy lên hệ thống hoặc dùng URL trực tuyến.');
       return;
     }
 
@@ -250,28 +251,18 @@ export const MenuItemFormModal: React.FC<MenuItemFormModalProps> = ({ dish, onCl
               </div>
             </div>
 
-            {/* Image URL with preview feedback */}
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <label className="font-bold text-on-surface">
-                  Đường dẫn ảnh món (URL) <span className="text-primary">*</span>
-                </label>
-                {imageLoadError && (
-                  <span className="text-[11px] text-error font-medium">Link ảnh không tải được, hiển thị ảnh mẫu</span>
-                )}
-              </div>
-              <input
-                type="url"
-                required
-                value={image}
-                onChange={(e) => {
-                  setImage(e.target.value);
-                  setImageLoadError(false);
-                }}
-                placeholder="https://..."
-                className="w-full px-3.5 py-2.5 bg-surface-container-low border border-border rounded-xl text-on-surface outline-none focus:border-primary focus:bg-surface-container-lowest transition-all text-xs font-mono"
-              />
-            </div>
+            {/* Image Uploader Component */}
+            <ImageUploader
+              currentImageUrl={image}
+              onImageChange={(newUrl) => {
+                setImage(newUrl);
+                setImageLoadError(false);
+              }}
+              folder="dishes"
+              aspectRatio="dish"
+              label="Ảnh món ăn"
+              required
+            />
 
             {/* Description */}
             <div>

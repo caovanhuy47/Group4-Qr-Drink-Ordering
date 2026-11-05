@@ -3,6 +3,7 @@ import type { Banner, BannerLinkType } from '../../types/restaurant';
 import { useRestaurant } from '../../contexts/useRestaurant';
 import { AdminLayout } from '../../components/admin/AdminLayout';
 import { DEFAULT_FALLBACK_IMAGE } from '../../services/dishesApi';
+import { ImageUploader } from '../../components/admin/ImageUploader';
 
 const GRADIENT_PRESETS = [
   {
@@ -39,7 +40,7 @@ export const BannerManagementView: React.FC = () => {
     dishes,
     categories,
     currentUser,
-    showToast,
+    showAdminFeedback,
   } = useRestaurant();
 
   // Search & Filter state
@@ -151,7 +152,11 @@ export const BannerManagementView: React.FC = () => {
   const handleSubmitForm = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!canManage) {
-      showToast('Bạn không có quyền chỉnh sửa banner.', 'error');
+      showAdminFeedback({
+        title: 'Không Có Quyền Hạn',
+        message: 'Bạn không có quyền chỉnh sửa banner quảng cáo.',
+        type: 'error',
+      });
       return;
     }
 
@@ -801,25 +806,17 @@ export const BannerManagementView: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Image URL */}
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="font-bold text-on-surface">Đường dẫn ảnh nền (URL)</label>
-                    {imageLoadError && (
-                      <span className="text-[11px] text-error font-medium">Link ảnh không tải được</span>
-                    )}
-                  </div>
-                  <input
-                    type="url"
-                    value={imageUrl}
-                    onChange={(e) => {
-                      setImageUrl(e.target.value);
-                      setImageLoadError(false);
-                    }}
-                    placeholder="https://... (để trống nếu chỉ dùng nền màu)"
-                    className="w-full px-3.5 py-2 bg-surface-container-low border border-border rounded-xl text-on-surface outline-none focus:border-primary focus:bg-surface-container-lowest transition-all font-mono text-xs"
-                  />
-                </div>
+                {/* Image Uploader & URL Input */}
+                <ImageUploader
+                  currentImageUrl={imageUrl}
+                  onImageChange={(newUrl) => {
+                    setImageUrl(newUrl);
+                    setImageLoadError(false);
+                  }}
+                  folder="banners"
+                  aspectRatio="banner"
+                  label="Hình ảnh Banner quảng cáo"
+                />
 
                 {/* Background Gradient Theme */}
                 <div>

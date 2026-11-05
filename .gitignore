@@ -47,4 +47,11 @@ playwright-report/
 .temp/
 .tmp/
 scratch/
+tmp-test-media/
+
+# Uploads
+uploads/
+*/uploads/*
+!*/uploads/**/.gitkeep
+
 
