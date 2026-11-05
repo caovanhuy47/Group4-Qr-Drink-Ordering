@@ -28,15 +28,15 @@ export const OrderTrackingView: React.FC = () => {
   const steps: { status: OrderStatus; label: string; desc: string; icon: string }[] = [
     {
       status: 'pending',
-      label: 'Đã gửi đơn',
-      desc: 'Hệ thống Huy CV đã chuyển đơn tới quầy pha chế / bếp',
-      icon: 'send',
+      label: 'Đã gửi vào bếp',
+      desc: 'Hệ thống Huy CV đã tiếp nhận và chuyển đơn thẳng tới quầy bếp / pha chế',
+      icon: 'skillet',
     },
     {
       status: 'preparing',
       label: 'Bếp đang chuẩn bị',
       desc: 'Món ăn & thức uống đang được hoàn thiện nóng hổi',
-      icon: 'skillet',
+      icon: 'restaurant',
     },
     {
       status: 'served_paid',
@@ -64,32 +64,30 @@ export const OrderTrackingView: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-background flex flex-col pb-16">
-      {/* Top Header */}
+      {/* Top Header: Clean and responsive without conflicting extra actions */}
       <header className="sticky top-0 z-30 bg-surface/95 backdrop-blur-xl border-b border-border shadow-xs">
-        <div className="max-w-[800px] mx-auto px-4 md:px-8 py-3.5 flex items-center justify-between">
-          <div className="flex items-center gap-3">
+        <div className="max-w-[800px] mx-auto px-4 md:px-8 py-3.5 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
             <button
               onClick={() => setViewRoute('lobby')}
-              className="w-9 h-9 rounded-full bg-surface-container flex items-center justify-center text-on-surface hover:bg-surface-container-high transition-colors"
+              className="w-9 h-9 rounded-full bg-surface-container flex items-center justify-center text-on-surface hover:bg-surface-container-high transition-colors shrink-0"
+              title="Quay lại thực đơn"
             >
               <span className="material-symbols-outlined text-[20px]">arrow_back</span>
             </button>
-            <div className="flex flex-col">
-              <h2 className="font-headline font-bold text-base md:text-lg text-on-surface leading-tight">
+            <div className="flex flex-col min-w-0">
+              <h2 className="font-headline font-bold text-sm md:text-base text-on-surface leading-tight truncate">
                 Tiến Trình Đơn Hàng • Huy CV
               </h2>
-              <span className="text-[11px] text-primary font-bold">
+              <span className="text-[11px] text-primary font-bold truncate">
                 Mã đơn: #{currentOrder.id} • {currentOrder.tableNumber}
               </span>
             </div>
           </div>
 
-          <button
-            onClick={() => setViewRoute('lobby')}
-            className="px-3.5 py-1.5 rounded-full bg-secondary-soft text-on-surface border border-secondary-container text-xs font-bold hover:bg-secondary-container transition-colors shadow-xs"
-          >
-            Gọi thêm món
-          </button>
+          <div className="px-2.5 py-1 rounded-full bg-primary-soft text-primary font-bold text-xs shrink-0">
+            {currentOrder.tableNumber}
+          </div>
         </div>
       </header>
 
@@ -103,14 +101,14 @@ export const OrderTrackingView: React.FC = () => {
                 Thời gian đặt: {currentOrder.createdAt}
               </span>
               <h3 className="font-headline font-bold text-xl md:text-2xl text-on-surface mt-0.5">
-                {currentOrder.status === 'pending' && 'Đơn hàng đang chờ tiếp nhận'}
-                {currentOrder.status === 'preparing' && 'Bếp đang tích cực chuẩn bị món'}
+                {(currentOrder.status === 'pending' || currentOrder.status === 'preparing') &&
+                  'Đã gửi vào bếp • Đang chuẩn bị món'}
                 {(currentOrder.status === 'served_paid' || currentOrder.status === 'seated') &&
                   'Đã phục vụ xong • Đang dùng bữa'}
               </h3>
             </div>
 
-            <div className="px-3 py-1.5 rounded-full bg-primary-soft text-primary font-bold text-xs">
+            <div className="px-3 py-1.5 rounded-full bg-primary-soft text-primary font-bold text-xs shrink-0">
               {currentOrder.tableNumber}
             </div>
           </div>

@@ -72,3 +72,4 @@
 
 - **Phần đã hoàn tất và kiểm chứng độc lập trên laptop**: Hệ thống Frontend, Backend, Vite Proxy và cơ chế sinh mã QR LAN đã hoạt động trơn tru 100%.
 - **Phần bàn giao cho người dùng**: Người dùng có thể cầm điện thoại di động kết nối cùng mạng Wi-Fi và quét trực tiếp mã QR của bàn để trải nghiệm thực tế quy trình đặt món.
+

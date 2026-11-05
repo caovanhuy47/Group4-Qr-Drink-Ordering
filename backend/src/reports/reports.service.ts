@@ -60,6 +60,36 @@ function parseVietnamDateRange(startDateStr: string, endDateStr: string): { star
   };
 }
 
+export function normalizeOrderItemSnapshots(rawItems: any[]): OrderItemSnapshot[] {
+  if (!Array.isArray(rawItems)) return [];
+  return rawItems.map((i, idx) => {
+    const quantity = Number(i.quantity) || 1;
+    const unitPrice = Number(
+      i.unitPrice ??
+      i.price ??
+      (i.subtotal ? Math.round(Number(i.subtotal) / quantity) : 0)
+    ) || 0;
+    const totalPrice = Number(
+      i.totalPrice ??
+      i.subtotal ??
+      (unitPrice * quantity)
+    ) || 0;
+    return {
+      itemId: i.itemId || i.id || `item-${idx}-${Math.random().toString(36).slice(2, 6)}`,
+      dishId: i.dishId || '',
+      name: i.name || 'Món ăn',
+      sizeName: i.sizeName || i.size || 'Mặc định',
+      toppings: Array.isArray(i.toppings)
+        ? i.toppings.map((t: any) => (typeof t === 'string' ? t : t?.name || '')).filter(Boolean)
+        : [],
+      notes: i.notes || '',
+      quantity,
+      unitPrice,
+      totalPrice,
+    };
+  });
+}
+
 @Injectable()
 export class ReportsService implements OnModuleInit {
   constructor(
@@ -314,8 +344,9 @@ export class ReportsService implements OnModuleInit {
     };
 
     const data = pagedRecords.map((r) => {
-      const itemSummary = r.items
-        ? r.items.map((i) => `${i.name} (${i.quantity})`).join(', ')
+      const normalizedItems = normalizeOrderItemSnapshots(r.items);
+      const itemSummary = normalizedItems.length > 0
+        ? normalizedItems.map((i) => `${i.name} (${i.quantity})`).join(', ')
         : '';
 
       const confDate = r.confirmedAt ? new Date(r.confirmedAt) : null;
@@ -340,7 +371,7 @@ export class ReportsService implements OnModuleInit {
         totalQuantity: r.totalQuantity,
         totalAmount: r.totalAmount,
         itemSummary,
-        items: r.items || [],
+        items: normalizedItems,
       };
     });
 
@@ -387,7 +418,7 @@ export class ReportsService implements OnModuleInit {
       completedAt: compDate ? `${compDate.toLocaleTimeString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', hour: '2-digit', minute: '2-digit' })} — ${compDate.toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}` : null,
       totalQuantity: record.totalQuantity,
       totalAmount: record.totalAmount,
-      items: record.items || [],
+      items: normalizeOrderItemSnapshots(record.items),
     };
   }
 
@@ -405,7 +436,7 @@ export class ReportsService implements OnModuleInit {
     // 2. Check Idempotency / Update Active Session (prevent duplicate recording)
     const existing = await this.sessionRepo.findOne({ where: { sessionId: dto.sessionId } });
     if (existing) {
-      if (existing.confirmedAt) {
+      if (existing.status === 'seated' && existing.confirmedAt) {
         return {
           success: true,
           message: 'Lượt bàn đã được ghi nhận trước đó (idempotent)',
@@ -620,7 +651,7 @@ export class ReportsService implements OnModuleInit {
           firstOrderAt: firstOrderAtFormatted,
           firstOrderAtIso: match.firstOrderAt ? new Date(match.firstOrderAt).toISOString() : null,
           waitingMinutes,
-          items: match.items || [],
+          items: normalizeOrderItemSnapshots(match.items),
           totalQuantity: match.totalQuantity,
           totalAmount: match.totalAmount,
           confirmedAt: match.confirmedAt ? new Date(match.confirmedAt).toISOString() : null,

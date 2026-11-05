@@ -10,7 +10,7 @@
  */
 
 // Địa chỉ IP LAN mặc định đã được xác minh trên card mạng Wi-Fi
-export const DEFAULT_LAN_IP = '192.168.12.75';
+export const DEFAULT_LAN_IP = '192.168.1.6';
 export const DEFAULT_FRONTEND_PORT = '5173';
 
 /**

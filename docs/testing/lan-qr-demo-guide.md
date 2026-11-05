@@ -128,3 +128,4 @@ Bạn có thể mở trực tiếp đường dẫn này trên trình duyệt đi
 ### Vấn đề 3: Đổi bàn hoặc xóa giỏ hàng
 - Khách quét mã QR bàn nào (ví dụ `table=B02`), hệ thống sẽ lưu định danh bàn đó vào `sessionStorage` của trình duyệt điện thoại.
 - Muốn chuyển sang bàn khác (ví dụ Bàn 05), chỉ cần dùng camera quét mã QR của Bàn 05, hệ thống sẽ tự động chuyển phiên gọi món sang Bàn 05 mà không làm xáo trộn đơn hàng khác.
+

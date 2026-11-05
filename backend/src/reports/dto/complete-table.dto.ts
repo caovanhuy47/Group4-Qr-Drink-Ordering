@@ -13,3 +13,4 @@ export class CompleteTableDto {
   @IsOptional()
   staffId?: string;
 }
+

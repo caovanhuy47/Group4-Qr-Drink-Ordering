@@ -48,6 +48,8 @@ export interface RestaurantContextType {
   removeVoucher: () => void;
   voucherDiscountAmount: number;
   currentOrder: Order | null;
+  orderSuccessModalData: { sessionId: string; tableNumber: string } | null;
+  closeOrderSuccessModal: () => void;
   submitOrder: (orderNotes?: string) => Promise<{ success: boolean; message: string }>;
   updateOrderStatus: (status: OrderStatus) => void;
 

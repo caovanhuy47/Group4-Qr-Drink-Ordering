@@ -50,14 +50,30 @@ test.describe('Vòng đời Đồng bộ Gọi Món Từ Điện Thoại Đến 
     expect(orderData.tableNumber).toBe('BÀN 03');
     expect(orderData.status).toBe('ordered');
 
-    // 7. Xác nhận đã tự động chuyển sang màn hình Theo dõi đơn
+    // 7. Xác nhận xuất hiện Popup chuyên dụng "Đã gửi món thành công" (thay thế toast che header)
+    const successModal = page.locator('div[role="dialog"]', { hasText: 'Đã gửi món thành công' });
+    await expect(successModal).toBeVisible();
+    await expect(successModal.locator('text=Bàn 03')).toBeVisible();
+
+    // Bấm nút CTA "Xem món đã đặt" trên Modal
+    const viewOrderCta = successModal.locator('button', { hasText: 'Xem món đã đặt' });
+    await expect(viewOrderCta).toBeVisible();
+    await viewOrderCta.click();
+
+    // 8. Chuyển sang màn hình Theo dõi đơn
     await expect(page).toHaveURL(/.*order-tracking.*/);
     await expect(page.locator('text=Bàn 03').first()).toBeVisible();
+
+    // Xác nhận loại bỏ bước giả "chờ tiếp nhận" & hiển thị đúng quy trình gửi thẳng vào bếp
+    await expect(page.locator('text=Đã gửi vào bếp • Đang chuẩn bị món')).toBeVisible();
+    await expect(page.locator('text=Đơn hàng đang chờ tiếp nhận')).not.toBeVisible();
+    // Xác nhận không còn nút "Gọi thêm món" đè trên header
+    await expect(page.locator('header button', { hasText: 'Gọi thêm món' })).not.toBeVisible();
 
     // ==========================================
     // PHẦN 2: QUẢN TRỊ VIÊN / ADMIN NHẬN ĐƠN BÀN 03
     // ==========================================
-    // 8. Đăng nhập nhân viên/admin
+    // 9. Đăng nhập nhân viên/admin
     await page.goto('/#/staff/login');
     await page.fill('input[placeholder*="username"], input[name="username"], input[type="text"]', TEST_USER);
     await page.fill('input[type="password"]', TEST_PASS);
@@ -73,7 +89,7 @@ test.describe('Vòng đời Đồng bộ Gọi Món Từ Điện Thoại Đến 
     await page.waitForSelector('text=Quản lý bàn');
 
     // Bàn 03 phải hiển thị trạng thái Order thành công (ordered)
-    const table03Card = page.locator('div').filter({ hasText: /^BÀN 03/ }).first();
+    const table03Card = page.locator('div.rounded-2xl', { has: page.locator('h4', { hasText: 'BÀN 03' }) }).first();
     await expect(table03Card).toBeVisible();
 
     // Nút xem món trên card Bàn 03
@@ -100,17 +116,15 @@ test.describe('Vòng đời Đồng bộ Gọi Món Từ Điện Thoại Đến 
 
     const payData = await payResponse.json();
     expect(payData.success).toBe(true);
+    await page.waitForTimeout(500);
 
-    // 11. Đóng drawer nếu còn mở
-    const closeBtn = drawer.locator('button', { hasText: 'close' }).first();
-    if (await closeBtn.isVisible()) {
-      await closeBtn.click();
-    }
+    // 11. Đóng drawer bằng nút X
+    const closeBtn = drawer.locator('button:has(span:text-is("close"))').first();
+    await closeBtn.click();
     await page.waitForTimeout(500);
 
     // 12. Kiểm tra Bàn 03 đã chuyển sang Đang ngồi (seated) với nút "Bàn trống"
-    const seatedCard = page.locator('div').filter({ hasText: /^BÀN 03/ }).first();
-    const clearBtn = seatedCard.locator('button', { hasText: 'Bàn trống' }).first();
+    const clearBtn = table03Card.locator('button', { hasText: 'Bàn trống' }).first();
     await expect(clearBtn).toBeVisible();
 
     // 13. Bấm "Bàn trống" giải phóng bàn về Trống
@@ -120,6 +134,46 @@ test.describe('Vòng đời Đồng bộ Gọi Món Từ Điện Thoại Đến 
     ]);
 
     // Bàn 03 trở về Trống hoàn toàn
-    await expect(seatedCard.locator('button', { hasText: 'Xem thông tin bàn' }).first()).toBeVisible();
+    await expect(table03Card.locator('button', { hasText: 'Xem thông tin bàn' }).first()).toBeVisible();
+  });
+
+  test('Kịch bản 2: Bấm "Xem món" Bàn 01 hiển thị trơn tru, phòng thủ lỗi toLocaleString', async ({ page }) => {
+    // Bắt các pageerror nếu có runtime crash
+    /** @type {string[]} */
+    const pageErrors = [];
+    page.on('pageerror', (err) => pageErrors.push(err.message));
+
+    // 1. Đăng nhập nhân viên/admin
+    await page.goto('/#/staff/login');
+    await page.fill('input[placeholder*="username"], input[name="username"], input[type="text"]', TEST_USER);
+    await page.fill('input[type="password"]', TEST_PASS);
+    await page.click('button[type="submit"]');
+
+    const startShiftBtn = page.locator('button', { hasText: 'Bắt đầu ca trực' });
+    if (await startShiftBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await startShiftBtn.click();
+    }
+    await page.waitForTimeout(500);
+
+    // 2. Mở màn hình quản lý bàn
+    await page.goto('/#/staff/tables');
+    await page.waitForSelector('text=Quản lý bàn');
+
+    // 3. Tìm thẻ Bàn 01
+    const table01Card = page.locator('div.rounded-2xl', { has: page.locator('h4', { hasText: 'BÀN 01' }) }).first();
+    await expect(table01Card).toBeVisible();
+
+    // 4. Bấm "Xem lại món" hoặc "Xem món" trên Bàn 01
+    const viewBtn = table01Card.locator('button', { hasText: /Xem (lại )?món|Xem thông tin bàn/ }).first();
+    await expect(viewBtn).toBeVisible();
+    await viewBtn.click();
+
+    // 5. Drawer mở thành công, KHÔNG xuất hiện thông báo lỗi ErrorBoundary "Đã xảy ra lỗi khi hiển thị giao diện"
+    await expect(page.locator('text=Đã xảy ra lỗi khi hiển thị giao diện')).not.toBeVisible();
+    await expect(page.locator('h3', { hasText: 'Chi tiết BÀN 01' })).toBeVisible();
+
+    // Không có lỗi toLocaleString trong page errors
+    const toLocaleStringError = pageErrors.find((e) => e.includes('toLocaleString'));
+    expect(toLocaleStringError).toBeUndefined();
   });
 });

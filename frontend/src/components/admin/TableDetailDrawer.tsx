@@ -127,12 +127,23 @@ export const TableDetailDrawer: React.FC<TableDetailDrawerProps> = ({ table, onC
                     : Array.isArray((item as any).toppings)
                     ? (item as any).toppings
                     : [];
+                  const quantity = Number(item.quantity) || 1;
+                  const itemTotalPrice = Number(
+                    item.totalPrice ??
+                    (item as any).subtotal ??
+                    ((item as any).price ? (item as any).price * quantity : 0)
+                  ) || 0;
+                  const itemUnitPrice = Number(
+                    item.unitPrice ??
+                    (item as any).price ??
+                    (quantity > 0 ? Math.round(itemTotalPrice / quantity) : 0)
+                  ) || 0;
 
                   return (
                     <div key={`${item.itemId || item.dishId}-${idx}`} className="py-3 flex items-start justify-between gap-3 text-xs">
                       <div className="flex items-start gap-2.5 min-w-0">
                         <span className="w-6 h-6 rounded-md bg-primary-soft text-primary font-bold flex items-center justify-center shrink-0 mt-0.5">
-                          {item.quantity}x
+                          {quantity}x
                         </span>
                         <div className="min-w-0">
                           <span className="font-bold text-sm text-on-surface block leading-tight">
@@ -158,11 +169,11 @@ export const TableDetailDrawer: React.FC<TableDetailDrawerProps> = ({ table, onC
 
                       <div className="text-right shrink-0">
                         <span className="font-headline font-bold text-xs text-on-surface block">
-                          {item.totalPrice.toLocaleString('vi-VN')}đ
+                          {itemTotalPrice.toLocaleString('vi-VN')}đ
                         </span>
-                        {item.quantity > 1 && (
+                        {quantity > 1 && (
                           <span className="text-[10px] text-on-surface-variant block">
-                            ({item.unitPrice.toLocaleString('vi-VN')}đ/phần)
+                            ({itemUnitPrice.toLocaleString('vi-VN')}đ/phần)
                           </span>
                         )}
                       </div>
@@ -183,7 +194,7 @@ export const TableDetailDrawer: React.FC<TableDetailDrawerProps> = ({ table, onC
                   Nhân viên xác nhận: <strong>{session.confirmedBy}</strong> lúc <strong>{session.confirmedAt}</strong>.
                 </p>
                 <p className="text-[11px] text-on-surface-variant">
-                  Số tiền đã thu: <strong className="text-tertiary">{session.confirmedAmount?.toLocaleString('vi-VN')}đ</strong>. Khách vẫn tiếp tục ngồi tại bàn.
+                  Số tiền đã thu: <strong className="text-tertiary">{(session.confirmedAmount ?? session.totalAmount ?? 0).toLocaleString('vi-VN')}đ</strong>. Khách vẫn tiếp tục ngồi tại bàn.
                 </p>
               </div>
             )}
@@ -197,7 +208,7 @@ export const TableDetailDrawer: React.FC<TableDetailDrawerProps> = ({ table, onC
                   Tổng tiền lượt bàn
                 </span>
                 <span className="font-headline font-black text-xl text-primary">
-                  {session.totalAmount.toLocaleString('vi-VN')}đ
+                  {(session.totalAmount ?? 0).toLocaleString('vi-VN')}đ
                 </span>
               </div>
             )}
@@ -206,7 +217,7 @@ export const TableDetailDrawer: React.FC<TableDetailDrawerProps> = ({ table, onC
               <div className="space-y-2">
                 <div className="flex items-center justify-between text-xs px-2 py-1 rounded bg-surface-container-highest text-on-surface-variant">
                   <span>Xác nhận cho: <strong>{table.number}</strong> (#{session.sessionId})</span>
-                  <span className="font-bold text-primary">{session.totalAmount.toLocaleString('vi-VN')}đ</span>
+                  <span className="font-bold text-primary">{(session.totalAmount ?? 0).toLocaleString('vi-VN')}đ</span>
                 </div>
 
                 {!canCollect && (

@@ -233,6 +233,11 @@ export const RestaurantProvider: React.FC<{ children: ReactNode }> = ({ children
 
   // Order placed by current table (null by default until customer places order)
   const [currentOrder, setCurrentOrderState] = useState<Order | null>(() => loadActiveOrderForTable(currentTable));
+  const [orderSuccessModalData, setOrderSuccessModalData] = useState<{ sessionId: string; tableNumber: string } | null>(null);
+
+  const closeOrderSuccessModal = () => {
+    setOrderSuccessModalData(null);
+  };
 
   const setCurrentOrder = (order: Order | null) => {
     setCurrentOrderState(order);
@@ -847,8 +852,11 @@ export const RestaurantProvider: React.FC<{ children: ReactNode }> = ({ children
       await refreshTables().catch(() => {});
 
       setCart([]);
-      setViewRoute('order-tracking');
-      showToast(`Đã gửi đơn gọi món thành công cho ${currentTable}!`, 'success');
+      // Open dedicated success modal with table and sessionId from backend (no overlapping toast)
+      setOrderSuccessModalData({
+        sessionId: orderId,
+        tableNumber: currentTable,
+      });
       return { success: true, message: 'Đặt món thành công' };
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Lỗi khi gửi đơn gọi món';
@@ -1276,6 +1284,8 @@ export const RestaurantProvider: React.FC<{ children: ReactNode }> = ({ children
         removeVoucher,
         voucherDiscountAmount,
         currentOrder,
+        orderSuccessModalData,
+        closeOrderSuccessModal,
         submitOrder,
         updateOrderStatus,
         dishes,

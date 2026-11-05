@@ -2,6 +2,7 @@ import React from 'react';
 import { RestaurantProvider } from './contexts/RestaurantContext';
 import { useRestaurant } from './contexts/useRestaurant';
 import { DishDetailModal } from './components/customer/DishDetailModal';
+import { OrderSuccessModal } from './components/customer/OrderSuccessModal';
 import { ToastContainer } from './components/common/ToastContainer';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
 
@@ -55,7 +56,13 @@ const InAppToast: React.FC = () => {
 };
 
 const MainContent: React.FC = () => {
-  const { viewRoute, selectedDishForDetail } = useRestaurant();
+  const {
+    viewRoute,
+    selectedDishForDetail,
+    orderSuccessModalData,
+    closeOrderSuccessModal,
+    setViewRoute,
+  } = useRestaurant();
 
   const renderActiveView = () => {
     switch (viewRoute) {
@@ -102,6 +109,19 @@ const MainContent: React.FC = () => {
       {/* Dish Detail BottomSheet on Mobile, Popup on Desktop */}
       {selectedDishForDetail && (
         <DishDetailModal key={selectedDishForDetail.id} />
+      )}
+
+      {/* Dedicated Order Placement Success Modal */}
+      {orderSuccessModalData && (
+        <OrderSuccessModal
+          isOpen={!!orderSuccessModalData}
+          tableNumber={orderSuccessModalData.tableNumber}
+          sessionId={orderSuccessModalData.sessionId}
+          onViewOrder={() => {
+            closeOrderSuccessModal();
+            setViewRoute('order-tracking');
+          }}
+        />
       )}
 
       {/* Global In-App Notification Toast */}

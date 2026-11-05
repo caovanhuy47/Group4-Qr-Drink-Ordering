@@ -98,3 +98,4 @@ npm --prefix frontend run build
 # 4. Chạy kiểm thử Playwright
 npx playwright test tests/playwright/order-sync-lifecycle.spec.js
 ```
+

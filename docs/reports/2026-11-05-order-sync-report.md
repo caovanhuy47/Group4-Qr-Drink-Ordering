@@ -83,3 +83,4 @@ Running 9 tests using 1 worker
 
 ## 4. Kết Luận
 Lỗi mất đồng bộ giữa điện thoại của khách và màn hình admin đã được giải quyết triệt để từ tầng API đến giao diện. Toàn bộ luồng hoạt động chính xác theo đúng nghiệp vụ thực tế của quán vỉa hè.
+
