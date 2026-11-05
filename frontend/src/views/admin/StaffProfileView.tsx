@@ -4,7 +4,7 @@ import { AdminLayout } from '../../components/admin/AdminLayout';
 import { reportsApi } from '../../services/reportsApi';
 
 export const StaffProfileView: React.FC = () => {
-  const { currentUser, logout, setViewRoute, updateProfile, resetStaffPassword, showToast } = useRestaurant();
+  const { currentUser, logout, setViewRoute, updateProfile, resetStaffPassword, showAdminFeedback } = useRestaurant();
 
   // Shift performance metrics from real backend database
   const [shiftOrdersCount, setShiftOrdersCount] = useState<number>(0);
@@ -85,7 +85,11 @@ export const StaffProfileView: React.FC = () => {
 
     const cleanName = editName.trim();
     if (!cleanName) {
-      showToast('Họ và tên không được để trống', 'error');
+      showAdminFeedback({
+        title: 'Thiếu Thông Tin',
+        message: 'Họ và tên không được để trống.',
+        type: 'error',
+      });
       return;
     }
 
@@ -98,13 +102,10 @@ export const StaffProfileView: React.FC = () => {
       });
 
       if (res.success) {
-        showToast('Cập nhật thông tin hồ sơ thành công!', 'success');
         setIsEditProfileOpen(false);
-      } else {
-        showToast(res.message, 'error');
       }
-    } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Lỗi khi cập nhật hồ sơ', 'error');
+    } catch {
+      // Handled in context showAdminFeedback
     } finally {
       setIsSavingProfile(false);
     }
@@ -136,7 +137,6 @@ export const StaffProfileView: React.FC = () => {
     try {
       const res = await resetStaffPassword(currentUser.id, newPassword);
       if (res.success) {
-        showToast('Đã đổi mật khẩu / mã PIN đăng nhập thành công!', 'success');
         setIsPasswordModalOpen(false);
         setNewPassword('');
         setConfirmPassword('');
@@ -156,7 +156,11 @@ export const StaffProfileView: React.FC = () => {
     try {
       localStorage.setItem('huycv_notification_sound', String(val));
     } catch {}
-    showToast(val ? 'Đã bật chuông báo đơn mới' : 'Đã tắt chuông báo đơn mới', 'info');
+    showAdminFeedback({
+      title: val ? 'Đã Bật Chuông Báo' : 'Đã Tắt Chuông Báo',
+      message: val ? 'Hệ thống sẽ phát chuông khi có đơn gọi món mới từ khách.' : 'Đã tắt âm thanh thông báo đơn mới.',
+      type: 'info',
+    });
   };
 
   if (!currentUser) {

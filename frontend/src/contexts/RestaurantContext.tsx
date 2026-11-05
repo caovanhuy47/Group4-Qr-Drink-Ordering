@@ -24,6 +24,7 @@ import { dishesApi } from '../services/dishesApi';
 import { bannersApi } from '../services/bannersApi';
 import { staffApi } from '../services/staffApi';
 import { RestaurantContext } from './restaurantContextDef';
+import type { AdminFeedbackData } from '../components/admin/AdminFeedbackModal';
 
 const routeToHash: Record<ViewRoute, string> = {
   lobby: '#/',
@@ -278,7 +279,7 @@ export const RestaurantProvider: React.FC<{ children: ReactNode }> = ({ children
     window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
   };
 
-  // Toast Notification System
+  // Toast Notification System (Customer / In-App)
   const [toast, setToast] = useState<{ text: string; type: 'success' | 'info' | 'error' } | null>(null);
 
   const showToast = (text: string, type: 'success' | 'info' | 'error' = 'info') => {
@@ -287,6 +288,19 @@ export const RestaurantProvider: React.FC<{ children: ReactNode }> = ({ children
 
   const clearToast = () => {
     setToast(null);
+  };
+
+  // Unified Admin Feedback Popups (Modal Notice)
+  const [adminFeedback, setAdminFeedback] = useState<AdminFeedbackData | null>(null);
+
+  const showAdminFeedback = (feedback: AdminFeedbackData) => {
+    // Suppress overlapping toast so only single clear popup displays
+    setToast(null);
+    setAdminFeedback(feedback);
+  };
+
+  const closeAdminFeedback = () => {
+    setAdminFeedback(null);
   };
 
   useEffect(() => {
@@ -623,12 +637,20 @@ export const RestaurantProvider: React.FC<{ children: ReactNode }> = ({ children
 
   const markTableServedAndPaid = async (tableId: string): Promise<{ success: boolean; message: string }> => {
     if (!currentUser) {
-      showToast('Vui lòng đăng nhập với tài khoản nhân viên để xác nhận thu tiền tại bàn.', 'error');
+      showAdminFeedback({
+        title: 'Yêu Cầu Đăng Nhập',
+        message: 'Vui lòng đăng nhập với tài khoản nhân viên để xác nhận thu tiền tại bàn.',
+        type: 'error',
+      });
       return { success: false, message: 'Yêu cầu đăng nhập' };
     }
 
     if (currentUser.canCollectMoney === false) {
-      showToast('Tài khoản của bạn không có quyền xác nhận thu tiền tại bàn.', 'error');
+      showAdminFeedback({
+        title: 'Không Có Quyền Thu Tiền',
+        message: 'Tài khoản của bạn không có quyền xác nhận thu tiền tại bàn.',
+        type: 'error',
+      });
       return { success: false, message: 'Không có quyền thu tiền' };
     }
 
@@ -690,14 +712,19 @@ export const RestaurantProvider: React.FC<{ children: ReactNode }> = ({ children
 
       refreshTables().catch(() => {});
 
-      showToast(
-        `Đã phục vụ & thu đủ ${updatedSession.totalAmount.toLocaleString('vi-VN')}đ tại ${targetTable.number}! Bàn chuyển sang trạng thái "Đang ngồi".`,
-        'success'
-      );
+      showAdminFeedback({
+        title: 'Phục Vụ & Thu Tiền Thành Công',
+        message: `Đã phục vụ & thu đủ ${updatedSession.totalAmount.toLocaleString('vi-VN')}đ tại ${targetTable.number}!\nBàn chuyển sang trạng thái "Đang ngồi".`,
+        type: 'success',
+      });
       return { success: true, message: 'Xác nhận thành công' };
     } catch (err: unknown) {
       const errMsg = err instanceof Error ? err.message : 'Lỗi hệ thống khi lưu lịch sử thu tiền';
-      showToast(`Không thể xác nhận thu tiền: ${errMsg}`, 'error');
+      showAdminFeedback({
+        title: 'Lỗi Thu Tiền',
+        message: `Không thể xác nhận thu tiền: ${errMsg}`,
+        type: 'error',
+      });
       return { success: false, message: errMsg };
     }
   };
@@ -710,7 +737,11 @@ export const RestaurantProvider: React.FC<{ children: ReactNode }> = ({ children
 
     // Safety rule per specs: cannot mark empty if still in 'ordered' status
     if (targetTable.status === 'ordered') {
-      showToast('Bàn đang có đơn "Order thành công", cần phục vụ và thu tiền trước khi giải phóng bàn.', 'error');
+      showAdminFeedback({
+        title: 'Chưa Thể Giải Phóng Bàn',
+        message: 'Bàn đang có đơn "Order thành công", cần phục vụ và thu tiền trước khi giải phóng bàn.',
+        type: 'warning',
+      });
       return { success: false, message: 'Chưa phục vụ và thu tiền' };
     }
 
@@ -734,11 +765,19 @@ export const RestaurantProvider: React.FC<{ children: ReactNode }> = ({ children
 
       refreshTables().catch(() => {});
 
-      showToast(`${targetTable.number} đã sẵn sàng đón lượt khách mới!`, 'info');
+      showAdminFeedback({
+        title: 'Bàn Đã Sẵn Sàng',
+        message: `${targetTable.number} đã trở về trạng thái Trống và sẵn sàng đón lượt khách mới!`,
+        type: 'info',
+      });
       return { success: true, message: 'Đã chuyển bàn về Trống' };
     } catch (err: unknown) {
       const errMsg = err instanceof Error ? err.message : 'Lỗi khi giải phóng bàn';
-      showToast(errMsg, 'error');
+      showAdminFeedback({
+        title: 'Lỗi Giải Phóng Bàn',
+        message: errMsg,
+        type: 'error',
+      });
       return { success: false, message: errMsg };
     }
   };
@@ -755,7 +794,11 @@ export const RestaurantProvider: React.FC<{ children: ReactNode }> = ({ children
       qrCodeUrl: buildTableQrCodeUrl(cleanNumber),
     };
     setTables((prev) => [...prev, newTable]);
-    showToast(`Đã thêm mới ${newTable.number} (${newTable.area})`, 'success');
+    showAdminFeedback({
+      title: 'Thêm Bàn Thành Công',
+      message: `Đã thêm mới ${newTable.number} (${newTable.area}) vào danh sách bàn của quán.`,
+      type: 'success',
+    });
   };
 
   const submitOrder = async (orderNotes?: string): Promise<{ success: boolean; message: string }> => {
@@ -873,28 +916,43 @@ export const RestaurantProvider: React.FC<{ children: ReactNode }> = ({ children
 
   const toggleDishAvailability = async (dishId: string): Promise<boolean> => {
     if (!currentUser) {
-      showToast('Vui lòng đăng nhập với tài khoản quản lý để đổi trạng thái món.', 'error');
+      showAdminFeedback({
+        type: 'error',
+        title: 'Yêu cầu đăng nhập',
+        message: 'Vui lòng đăng nhập với tài khoản quản lý để đổi trạng thái món.',
+      });
       return false;
     }
     const staffId = currentUser.id;
     try {
       const updated = await dishesApi.toggleDishStatus(dishId, staffId);
       setDishes((prev) => prev.map((d) => (d.id === dishId ? updated : d)));
-      showToast(
-        `Đã chuyển trạng thái món "${updated.name}" sang: ${updated.isAvailable ? 'Còn món (Đang mở bán)' : 'Tạm hết món'}`,
-        'success'
-      );
+      showAdminFeedback({
+        type: 'success',
+        title: 'Đã đổi trạng thái món',
+        message: `Món "${updated.name}" hiện tại đã chuyển sang: ${
+          updated.isAvailable ? 'Còn món (Đang mở bán)' : 'Tạm hết món'
+        }`,
+      });
       return true;
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Lỗi khi cập nhật trạng thái món';
-      showToast(msg, 'error');
+      showAdminFeedback({
+        type: 'error',
+        title: 'Lỗi đổi trạng thái',
+        message: msg,
+      });
       return false;
     }
   };
 
   const saveDish = async (dish: Dish): Promise<boolean> => {
     if (!currentUser) {
-      showToast('Vui lòng đăng nhập với tài khoản quản lý để lưu món ăn.', 'error');
+      showAdminFeedback({
+        type: 'error',
+        title: 'Yêu cầu đăng nhập',
+        message: 'Vui lòng đăng nhập với tài khoản quản lý để lưu món ăn.',
+      });
       return false;
     }
     const staffId = currentUser.id;
@@ -904,24 +962,40 @@ export const RestaurantProvider: React.FC<{ children: ReactNode }> = ({ children
       if (exists) {
         saved = await dishesApi.updateDish(dish.id, dish, staffId);
         setDishes((prev) => prev.map((d) => (d.id === dish.id ? saved : d)));
-        showToast(`Đã cập nhật món "${saved.name}" thành công!`, 'success');
+        showAdminFeedback({
+          type: 'success',
+          title: 'Đã cập nhật món',
+          message: `Món ăn "${saved.name}" đã được cập nhật thành công vào thực đơn quán Huy CV.`,
+        });
       } else {
         saved = await dishesApi.createDish(dish, staffId);
         setDishes((prev) => [saved, ...prev]);
-        showToast(`Đã thêm món mới "${saved.name}" vào thực đơn!`, 'success');
+        showAdminFeedback({
+          type: 'success',
+          title: 'Đã thêm món mới',
+          message: `Món ăn "${saved.name}" đã được thêm mới thành công vào thực đơn quán Huy CV.`,
+        });
       }
       dishesApi.fetchCategories().then(setCategories).catch(() => {});
       return true;
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Lỗi lưu thông tin món ăn';
-      showToast(msg, 'error');
+      showAdminFeedback({
+        type: 'error',
+        title: 'Không thể lưu món ăn',
+        message: msg,
+      });
       throw err;
     }
   };
 
   const deleteDish = async (dishId: string): Promise<boolean> => {
     if (!currentUser) {
-      showToast('Vui lòng đăng nhập với tài khoản quản lý để xóa món ăn.', 'error');
+      showAdminFeedback({
+        type: 'error',
+        title: 'Yêu cầu đăng nhập',
+        message: 'Vui lòng đăng nhập với tài khoản quản lý để xóa món ăn.',
+      });
       return false;
     }
     const staffId = currentUser.id;
@@ -934,12 +1008,20 @@ export const RestaurantProvider: React.FC<{ children: ReactNode }> = ({ children
       } else {
         setDishes((prev) => prev.filter((d) => d.id !== dishId));
       }
-      showToast(result.message, result.archived ? 'info' : 'success');
+      showAdminFeedback({
+        type: result.archived ? 'info' : 'success',
+        title: result.archived ? 'Đã lưu trữ món' : 'Đã xóa món ăn',
+        message: result.message,
+      });
       dishesApi.fetchCategories().then(setCategories).catch(() => {});
       return true;
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Lỗi khi xóa món ăn';
-      showToast(msg, 'error');
+      showAdminFeedback({
+        type: 'error',
+        title: 'Không thể xóa món',
+        message: msg,
+      });
       return false;
     }
   };
@@ -958,7 +1040,11 @@ export const RestaurantProvider: React.FC<{ children: ReactNode }> = ({ children
 
   const addCategory = async (name: string, icon: string, order?: number): Promise<{ success: boolean; message: string }> => {
     if (!currentUser) {
-      showToast('Vui lòng đăng nhập với tài khoản quản lý để thêm danh mục.', 'error');
+      showAdminFeedback({
+        title: 'Yêu Cầu Đăng Nhập',
+        message: 'Vui lòng đăng nhập với tài khoản quản lý để thêm danh mục.',
+        type: 'error',
+      });
       throw new Error('Yêu cầu đăng nhập');
     }
     try {
@@ -966,18 +1052,30 @@ export const RestaurantProvider: React.FC<{ children: ReactNode }> = ({ children
       const created = await dishesApi.createCategory({ name, icon, order }, staffId);
       setCategories((prev) => [...prev, created]);
       await refreshDishes();
-      showToast(`Đã thêm danh mục "${created.name}" vào thực đơn`, 'success');
+      showAdminFeedback({
+        title: 'Thêm Danh Mục Thành Công',
+        message: `Đã thêm danh mục "${created.name}" vào thực đơn của quán.`,
+        type: 'success',
+      });
       return { success: true, message: `Thêm danh mục "${created.name}" thành công` };
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Không thể tạo danh mục';
-      showToast(msg, 'error');
+      showAdminFeedback({
+        title: 'Lỗi Thêm Danh Mục',
+        message: msg,
+        type: 'error',
+      });
       throw new Error(msg);
     }
   };
 
   const updateCategory = async (id: string, name: string, icon: string, order?: number): Promise<{ success: boolean; message: string }> => {
     if (!currentUser) {
-      showToast('Vui lòng đăng nhập với tài khoản quản lý để sửa danh mục.', 'error');
+      showAdminFeedback({
+        title: 'Yêu Cầu Đăng Nhập',
+        message: 'Vui lòng đăng nhập với tài khoản quản lý để sửa danh mục.',
+        type: 'error',
+      });
       throw new Error('Yêu cầu đăng nhập');
     }
     try {
@@ -985,18 +1083,30 @@ export const RestaurantProvider: React.FC<{ children: ReactNode }> = ({ children
       const updated = await dishesApi.updateCategory(id, { name, icon, order }, staffId);
       setCategories((prev) => prev.map((c) => (c.id === id ? { ...c, ...updated } : c)));
       await refreshDishes();
-      showToast(`Đã cập nhật danh mục "${updated.name}"`, 'success');
+      showAdminFeedback({
+        title: 'Cập Nhật Danh Mục Thành Công',
+        message: `Đã cập nhật danh mục "${updated.name}" thành công!`,
+        type: 'success',
+      });
       return { success: true, message: `Cập nhật danh mục "${updated.name}" thành công` };
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Không thể cập nhật danh mục';
-      showToast(msg, 'error');
+      showAdminFeedback({
+        title: 'Lỗi Cập Nhật Danh Mục',
+        message: msg,
+        type: 'error',
+      });
       throw new Error(msg);
     }
   };
 
   const deleteCategory = async (catId: string): Promise<{ success: boolean; message: string }> => {
     if (!currentUser) {
-      showToast('Vui lòng đăng nhập với tài khoản quản lý để xóa danh mục.', 'error');
+      showAdminFeedback({
+        title: 'Yêu Cầu Đăng Nhập',
+        message: 'Vui lòng đăng nhập với tài khoản quản lý để xóa danh mục.',
+        type: 'error',
+      });
       throw new Error('Yêu cầu đăng nhập');
     }
     try {
@@ -1004,18 +1114,30 @@ export const RestaurantProvider: React.FC<{ children: ReactNode }> = ({ children
       const res = await dishesApi.deleteCategory(catId, staffId);
       setCategories((prev) => prev.filter((c) => c.id !== catId));
       await refreshDishes();
-      showToast(res.message, 'success');
+      showAdminFeedback({
+        title: 'Xóa Danh Mục Thành Công',
+        message: res.message,
+        type: 'success',
+      });
       return { success: true, message: res.message };
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Không thể xóa danh mục';
-      showToast(msg, 'error');
+      showAdminFeedback({
+        title: 'Lỗi Xóa Danh Mục',
+        message: msg,
+        type: 'error',
+      });
       throw new Error(msg);
     }
   };
 
   const saveBanner = async (bannerData: Partial<Banner>): Promise<boolean> => {
     if (!currentUser) {
-      showToast('Vui lòng đăng nhập với tài khoản quản lý để lưu banner.', 'error');
+      showAdminFeedback({
+        title: 'Yêu Cầu Đăng Nhập',
+        message: 'Vui lòng đăng nhập với tài khoản quản lý để lưu banner.',
+        type: 'error',
+      });
       return false;
     }
     const staffId = currentUser.id;
@@ -1025,46 +1147,71 @@ export const RestaurantProvider: React.FC<{ children: ReactNode }> = ({ children
       if (exists && bannerData.id) {
         saved = await bannersApi.updateBanner(bannerData.id, bannerData, staffId);
         setBanners((prev) => prev.map((b) => (b.id === bannerData.id ? saved : b)));
-        showToast(`Đã cập nhật banner "${saved.adminName || saved.title}" thành công!`, 'success');
+        showAdminFeedback({
+          title: 'Cập Nhật Banner Thành Công',
+          message: `Đã cập nhật banner "${saved.adminName || saved.title}" thành công!`,
+          type: 'success',
+        });
       } else {
         saved = await bannersApi.createBanner(bannerData, staffId);
         setBanners((prev) => [...prev, saved].sort((a, b) => (a.displayOrder ?? 0) - (b.displayOrder ?? 0)));
-        showToast(`Đã thêm banner "${saved.adminName || saved.title}" thành công!`, 'success');
+        showAdminFeedback({
+          title: 'Thêm Banner Thành Công',
+          message: `Đã thêm banner "${saved.adminName || saved.title}" thành công!`,
+          type: 'success',
+        });
       }
       return true;
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Lỗi khi lưu banner';
-      showToast(msg, 'error');
+      showAdminFeedback({
+        title: 'Lỗi Lưu Banner',
+        message: msg,
+        type: 'error',
+      });
       throw err;
     }
   };
 
   const toggleBannerActive = async (bannerId: string): Promise<boolean> => {
     if (!currentUser) {
-      showToast('Vui lòng đăng nhập với tài khoản quản lý để đổi trạng thái banner.', 'error');
+      showAdminFeedback({
+        title: 'Yêu Cầu Đăng Nhập',
+        message: 'Vui lòng đăng nhập với tài khoản quản lý để đổi trạng thái banner.',
+        type: 'error',
+      });
       return false;
     }
     const staffId = currentUser.id;
     try {
       const updated = await bannersApi.toggleBannerStatus(bannerId, staffId);
       setBanners((prev) => prev.map((b) => (b.id === bannerId ? updated : b)));
-      showToast(
-        updated.isActive
+      showAdminFeedback({
+        title: updated.isActive ? 'Đã Bật Hiển Thị Banner' : 'Đã Ẩn Banner',
+        message: updated.isActive
           ? `Đã hiển thị banner "${updated.adminName || updated.title}" trên sảnh khách`
           : `Đã tạm ẩn banner "${updated.adminName || updated.title}"`,
-        'info'
-      );
+        type: 'info',
+      });
       return true;
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Lỗi khi đổi trạng thái banner';
-      showToast(msg, 'error');
+      showAdminFeedback({
+        title: 'Lỗi Trạng Thái Banner',
+        message: msg,
+        type: 'error',
+      });
       return false;
     }
   };
 
   const reorderBanners = async (items: { id: string; displayOrder: number }[]): Promise<boolean> => {
     if (!currentUser) {
-      showToast('Vui lòng đăng nhập với tài khoản quản lý để sắp xếp banner.', 'error');
+      showAdminFeedback({
+        title: 'Yêu Cầu Đăng Nhập',
+        message: 'Vui lòng đăng nhập với tài khoản quản lý để sắp xếp banner.',
+        type: 'error',
+      });
       return false;
     }
     const staffId = currentUser.id;
@@ -1076,18 +1223,30 @@ export const RestaurantProvider: React.FC<{ children: ReactNode }> = ({ children
           .map((b) => (orderMap.has(b.id) ? { ...b, displayOrder: orderMap.get(b.id)! } : b))
           .sort((a, b) => (a.displayOrder ?? 0) - (b.displayOrder ?? 0));
       });
-      showToast('Đã lưu thứ tự hiển thị banner thành công!', 'success');
+      showAdminFeedback({
+        title: 'Sắp Xếp Banner Thành Công',
+        message: 'Đã lưu thứ tự hiển thị banner thành công!',
+        type: 'success',
+      });
       return true;
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Lỗi khi sắp xếp thứ tự banner';
-      showToast(msg, 'error');
+      showAdminFeedback({
+        title: 'Lỗi Sắp Xếp Banner',
+        message: msg,
+        type: 'error',
+      });
       return false;
     }
   };
 
   const deleteBanner = async (bannerId: string): Promise<boolean> => {
     if (!currentUser) {
-      showToast('Vui lòng đăng nhập với tài khoản quản lý để xóa banner.', 'error');
+      showAdminFeedback({
+        title: 'Yêu Cầu Đăng Nhập',
+        message: 'Vui lòng đăng nhập với tài khoản quản lý để xóa banner.',
+        type: 'error',
+      });
       return false;
     }
     const staffId = currentUser.id;
@@ -1095,11 +1254,19 @@ export const RestaurantProvider: React.FC<{ children: ReactNode }> = ({ children
       const target = banners.find((b) => b.id === bannerId);
       await bannersApi.deleteBanner(bannerId, staffId);
       setBanners((prev) => prev.filter((b) => b.id !== bannerId));
-      showToast(`Đã xóa banner "${target?.adminName || target?.title || bannerId}" thành công!`, 'success');
+      showAdminFeedback({
+        title: 'Xóa Banner Thành Công',
+        message: `Đã xóa banner "${target?.adminName || target?.title || bannerId}" thành công!`,
+        type: 'success',
+      });
       return true;
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Lỗi khi xóa banner';
-      showToast(msg, 'error');
+      showAdminFeedback({
+        title: 'Lỗi Xóa Banner',
+        message: msg,
+        type: 'error',
+      });
       return false;
     }
   };
@@ -1142,18 +1309,30 @@ export const RestaurantProvider: React.FC<{ children: ReactNode }> = ({ children
     staffData: Partial<Staff> & { password: string },
   ): Promise<{ success: boolean; message: string }> => {
     if (!currentUser) {
-      showToast('Vui lòng đăng nhập với tài khoản Quản trị viên để thêm nhân viên.', 'error');
+      showAdminFeedback({
+        title: 'Yêu Cầu Đăng Nhập',
+        message: 'Vui lòng đăng nhập với tài khoản Quản trị viên để thêm nhân viên.',
+        type: 'error',
+      });
       throw new Error('Yêu cầu đăng nhập');
     }
     const staffId = currentUser.id;
     try {
       const created = await staffApi.createStaff(staffData, staffId);
       setStaffList((prev) => [...prev, created]);
-      showToast(`Đã thêm nhân viên "${created.name}" thành công!`, 'success');
+      showAdminFeedback({
+        title: 'Thêm Nhân Viên Thành Công',
+        message: `Đã thêm nhân viên "${created.name}" (${created.roleName}) vào hệ thống.`,
+        type: 'success',
+      });
       return { success: true, message: 'Thêm nhân viên thành công' };
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Lỗi khi thêm nhân viên';
-      showToast(msg, 'error');
+      showAdminFeedback({
+        title: 'Lỗi Thêm Nhân Viên',
+        message: msg,
+        type: 'error',
+      });
       throw err;
     }
   };
@@ -1163,7 +1342,11 @@ export const RestaurantProvider: React.FC<{ children: ReactNode }> = ({ children
     staffData: Partial<Staff> & { password?: string },
   ): Promise<{ success: boolean; message: string }> => {
     if (!currentUser) {
-      showToast('Vui lòng đăng nhập với tài khoản Quản trị viên để cập nhật nhân viên.', 'error');
+      showAdminFeedback({
+        title: 'Yêu Cầu Đăng Nhập',
+        message: 'Vui lòng đăng nhập với tài khoản Quản trị viên để cập nhật nhân viên.',
+        type: 'error',
+      });
       throw new Error('Yêu cầu đăng nhập');
     }
     const staffId = currentUser.id;
@@ -1176,11 +1359,19 @@ export const RestaurantProvider: React.FC<{ children: ReactNode }> = ({ children
           localStorage.setItem('huycv_staff_session', JSON.stringify(updated));
         } catch {}
       }
-      showToast(`Đã cập nhật thông tin nhân viên "${updated.name}" thành công!`, 'success');
+      showAdminFeedback({
+        title: 'Cập Nhật Nhân Viên Thành Công',
+        message: `Đã cập nhật thông tin nhân viên "${updated.name}" thành công!`,
+        type: 'success',
+      });
       return { success: true, message: 'Cập nhật thành công' };
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Lỗi khi cập nhật nhân viên';
-      showToast(msg, 'error');
+      showAdminFeedback({
+        title: 'Lỗi Cập Nhật Nhân Viên',
+        message: msg,
+        type: 'error',
+      });
       throw err;
     }
   };
@@ -1196,34 +1387,51 @@ export const RestaurantProvider: React.FC<{ children: ReactNode }> = ({ children
       try {
         localStorage.setItem('huycv_staff_session', JSON.stringify(updated));
       } catch {}
-      showToast('Đã cập nhật hồ sơ cá nhân thành công!', 'success');
+      showAdminFeedback({
+        title: 'Cập Nhật Hồ Sơ Thành Công',
+        message: 'Đã cập nhật hồ sơ cá nhân thành công!',
+        type: 'success',
+      });
       return { success: true, message: 'Cập nhật thành công' };
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Lỗi cập nhật hồ sơ';
-      showToast(msg, 'error');
+      showAdminFeedback({
+        title: 'Lỗi Cập Nhật Hồ Sơ',
+        message: msg,
+        type: 'error',
+      });
       throw err;
     }
   };
 
   const toggleStaffStatus = async (staffId: string): Promise<{ success: boolean; message: string }> => {
     if (!currentUser) {
-      showToast('Vui lòng đăng nhập với tài khoản Quản trị viên để khóa/mở khóa nhân viên.', 'error');
+      showAdminFeedback({
+        title: 'Yêu Cầu Đăng Nhập',
+        message: 'Vui lòng đăng nhập với tài khoản Quản trị viên để khóa/mở khóa nhân viên.',
+        type: 'error',
+      });
       throw new Error('Yêu cầu đăng nhập');
     }
     const requesterId = currentUser.id;
     try {
       const updated = await staffApi.toggleStaffStatus(staffId, requesterId);
       setStaffList((prev) => prev.map((s) => (s.id === staffId ? updated : s)));
-      showToast(
-        updated.status === 'suspended'
+      showAdminFeedback({
+        title: updated.status === 'suspended' ? 'Đã Tạm Khóa Tài Khoản' : 'Đã Mở Khóa Tài Khoản',
+        message: updated.status === 'suspended'
           ? `Đã tạm khóa tài khoản nhân viên "${updated.name}"`
           : `Đã mở khóa tài khoản nhân viên "${updated.name}"`,
-        'info',
-      );
+        type: 'info',
+      });
       return { success: true, message: 'Thao tác thành công' };
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Lỗi khi đổi trạng thái tài khoản';
-      showToast(msg, 'error');
+      showAdminFeedback({
+        title: 'Lỗi Đổi Trạng Thái',
+        message: msg,
+        type: 'error',
+      });
       throw err;
     }
   };
@@ -1233,17 +1441,29 @@ export const RestaurantProvider: React.FC<{ children: ReactNode }> = ({ children
     newPass: string,
   ): Promise<{ success: boolean; message: string }> => {
     if (!currentUser) {
-      showToast('Vui lòng đăng nhập để thực hiện đặt lại mật khẩu.', 'error');
+      showAdminFeedback({
+        title: 'Yêu Cầu Đăng Nhập',
+        message: 'Vui lòng đăng nhập để thực hiện đặt lại mật khẩu.',
+        type: 'error',
+      });
       throw new Error('Yêu cầu đăng nhập');
     }
     const requesterId = currentUser.id;
     try {
       const res = await staffApi.resetStaffPassword(staffId, newPass, requesterId);
-      showToast(res.message, 'success');
+      showAdminFeedback({
+        title: 'Đặt Lại Mật Khẩu Thành Công',
+        message: res.message,
+        type: 'success',
+      });
       return res;
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Lỗi khi đặt lại mật khẩu';
-      showToast(msg, 'error');
+      showAdminFeedback({
+        title: 'Lỗi Đặt Lại Mật Khẩu',
+        message: msg,
+        type: 'error',
+      });
       throw err;
     }
   };
@@ -1322,6 +1542,9 @@ export const RestaurantProvider: React.FC<{ children: ReactNode }> = ({ children
         toggleStaffStatus,
         resetStaffPassword,
         toggleStaffMoneyPermission,
+        adminFeedback,
+        showAdminFeedback,
+        closeAdminFeedback,
         toast,
         showToast,
         clearToast,

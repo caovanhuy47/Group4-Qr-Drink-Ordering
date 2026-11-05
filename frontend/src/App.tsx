@@ -3,6 +3,7 @@ import { RestaurantProvider } from './contexts/RestaurantContext';
 import { useRestaurant } from './contexts/useRestaurant';
 import { DishDetailModal } from './components/customer/DishDetailModal';
 import { OrderSuccessModal } from './components/customer/OrderSuccessModal';
+import { AdminFeedbackModal } from './components/admin/AdminFeedbackModal';
 import { ToastContainer } from './components/common/ToastContainer';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
 
@@ -61,6 +62,8 @@ const MainContent: React.FC = () => {
     selectedDishForDetail,
     orderSuccessModalData,
     closeOrderSuccessModal,
+    adminFeedback,
+    closeAdminFeedback,
     setViewRoute,
   } = useRestaurant();
 
@@ -124,8 +127,11 @@ const MainContent: React.FC = () => {
         />
       )}
 
+      {/* Unified Admin Action Feedback Modal */}
+      <AdminFeedbackModal feedback={adminFeedback} onClose={closeAdminFeedback} />
+
       {/* Global In-App Notification Toast */}
-      <InAppToast />
+      {!adminFeedback && <InAppToast />}
 
       {/* Legacy/App Toast Container */}
       <ToastContainer />

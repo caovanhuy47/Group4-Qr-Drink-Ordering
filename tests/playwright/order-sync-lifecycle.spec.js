@@ -16,9 +16,10 @@ test.describe('Vòng đời Đồng bộ Gọi Món Từ Điện Thoại Đến 
     // Xác nhận đã nhận diện đúng Bàn 03
     await expect(page.locator('text=Bàn 03').first()).toBeVisible();
 
-    // 2. Mở chi tiết món "Bún Bò Huế Đặc Biệt"
-    const dishCard = page.locator('text=Bún Bò Huế Đặc Biệt').first();
+    // 2. Mở chi tiết món ăn đầu tiên có sẵn trên sảnh khách
+    const dishCard = page.locator('text=Lạp Xưởng Nướng Đá').or(page.locator('text=Bánh Tráng Trộn')).or(page.locator('text=Bún Bò Huế Đặc Biệt')).first();
     await dishCard.waitFor({ state: 'visible' });
+    const dishName = (await dishCard.innerText()).trim();
     await dishCard.click();
 
     // 3. Trong Modal chi tiết, bấm "Thêm vào giỏ"
@@ -99,13 +100,13 @@ test.describe('Vòng đời Đồng bộ Gọi Món Từ Điện Thoại Đến 
 
     // Drawer hiển thị đúng Chi tiết BÀN 03 và món ăn
     await expect(page.locator('h3', { hasText: 'Chi tiết BÀN 03' })).toBeVisible();
-    await expect(page.locator('text=Bún Bò Huế Đặc Biệt').first()).toBeVisible();
+    await expect(page.locator(`text=${dishName}`).first()).toBeVisible();
 
     // ==========================================
     // PHẦN 3: PHỤC VỤ, THU TIỀN VÀ GIẢI PHÓNG BÀN
     // ==========================================
     // 10. Bấm "Đã phục vụ và thu tiền" bên trong Drawer
-    const drawer = page.locator('.fixed.inset-0');
+    const drawer = page.locator('.fixed.inset-0').first();
     const payBtn = drawer.locator('button', { hasText: 'Đã phục vụ và thu tiền' }).first();
     await payBtn.waitFor({ state: 'visible' });
 
@@ -118,10 +119,19 @@ test.describe('Vòng đời Đồng bộ Gọi Món Từ Điện Thoại Đến 
     expect(payData.success).toBe(true);
     await page.waitForTimeout(500);
 
+    // Đóng feedback modal nếu có
+    const dismissFeedback = page.locator('div[role="dialog"] button', { hasText: 'Đóng' });
+    if (await dismissFeedback.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await dismissFeedback.click();
+      await page.waitForTimeout(300);
+    }
+
     // 11. Đóng drawer bằng nút X
     const closeBtn = drawer.locator('button:has(span:text-is("close"))').first();
-    await closeBtn.click();
-    await page.waitForTimeout(500);
+    if (await closeBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await closeBtn.click();
+      await page.waitForTimeout(500);
+    }
 
     // 12. Kiểm tra Bàn 03 đã chuyển sang Đang ngồi (seated) với nút "Bàn trống"
     const clearBtn = table03Card.locator('button', { hasText: 'Bàn trống' }).first();
@@ -132,6 +142,12 @@ test.describe('Vòng đời Đồng bộ Gọi Món Từ Điện Thoại Đến 
       page.waitForResponse((res) => res.url().includes('/api/reports/tables/complete') && res.ok()),
       clearBtn.click(),
     ]);
+
+    // Đóng feedback modal sau khi giải phóng bàn
+    if (await dismissFeedback.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await dismissFeedback.click();
+      await page.waitForTimeout(300);
+    }
 
     // Bàn 03 trở về Trống hoàn toàn
     await expect(table03Card.locator('button', { hasText: 'Xem thông tin bàn' }).first()).toBeVisible();

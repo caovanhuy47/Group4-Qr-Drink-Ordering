@@ -14,18 +14,21 @@ export const TableStatusIcon: React.FC<{ status: TableStatus; size?: 'sm' | 'md'
   size = 'md',
 }) => {
   const iconSizeClass = size === 'sm' ? 'text-[14px]' : size === 'lg' ? 'text-[22px]' : 'text-[17px]';
-  const subIconSizeClass = size === 'sm' ? 'text-[9px]' : size === 'lg' ? 'text-[12px]' : 'text-[10px]';
 
   if (status === 'ordered') {
+    const boxSize = size === 'sm' ? 'w-4 h-4' : size === 'lg' ? 'w-6 h-6' : 'w-5 h-5';
+    const mainIconSize = size === 'sm' ? 'text-[14px]' : size === 'lg' ? 'text-[20px]' : 'text-[17px]';
+    const badgeSize = size === 'sm' ? 'w-2.5 h-2.5 text-[8px]' : size === 'lg' ? 'w-3.5 h-3.5 text-[10px]' : 'w-3 h-3 text-[9px]';
+
     return (
-      <span className="relative inline-flex items-center justify-center shrink-0" aria-hidden="true">
-        <span className={`material-symbols-outlined ${iconSizeClass} text-primary`}>
+      <span className={`relative inline-flex items-center justify-center shrink-0 ${boxSize}`} aria-hidden="true">
+        <span className={`material-symbols-outlined ${mainIconSize} text-primary leading-none select-none`}>
           receipt_long
         </span>
         <span
-          className={`material-symbols-outlined ${subIconSizeClass} text-emerald-600 absolute -bottom-1 -right-1 font-black bg-surface-container-lowest rounded-full ring-1 ring-surface-container-lowest`}
+          className={`absolute -bottom-0.5 -right-0.5 ${badgeSize} rounded-full bg-emerald-600 text-white flex items-center justify-center shadow-xs font-bold ring-1 ring-surface-container-lowest leading-none select-none`}
         >
-          check_circle
+          <span className="material-symbols-outlined text-[inherit] leading-none">check</span>
         </span>
       </span>
     );

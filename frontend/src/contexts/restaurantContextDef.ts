@@ -14,6 +14,7 @@ import type {
   CustomerUser,
   DiningTable,
 } from '../types/restaurant';
+import type { AdminFeedbackData } from '../components/admin/AdminFeedbackModal';
 
 export interface RestaurantContextType {
   // Navigation
@@ -57,6 +58,11 @@ export interface RestaurantContextType {
   toast: { text: string; type: 'success' | 'info' | 'error' } | null;
   showToast: (text: string, type?: 'success' | 'info' | 'error') => void;
   clearToast: () => void;
+
+  // Unified Admin Feedback Popups
+  adminFeedback: AdminFeedbackData | null;
+  showAdminFeedback: (feedback: AdminFeedbackData) => void;
+  closeAdminFeedback: () => void;
 
   // Customer Authentication (Separated from Staff)
   currentCustomer: CustomerUser | null;

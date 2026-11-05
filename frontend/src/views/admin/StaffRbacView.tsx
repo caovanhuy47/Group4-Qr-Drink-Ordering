@@ -96,7 +96,7 @@ export const StaffRbacView: React.FC = () => {
     updateStaff,
     toggleStaffStatus,
     resetStaffPassword,
-    showToast,
+    showAdminFeedback,
   } = useRestaurant();
 
   // Search & Filter state
@@ -280,7 +280,11 @@ export const StaffRbacView: React.FC = () => {
   const handleSubmitForm = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!canManage) {
-      showToast('Bạn không có quyền chỉnh sửa nhân sự.', 'error');
+      showAdminFeedback({
+        title: 'Không Đủ Quyền Hạn',
+        message: 'Bạn không có quyền chỉnh sửa nhân sự.',
+        type: 'error',
+      });
       return;
     }
 
@@ -351,7 +355,11 @@ export const StaffRbacView: React.FC = () => {
 
     // Check last admin protection
     if (staffToToggle.role === 'admin' && staffToToggle.status === 'active' && adminCount <= 1) {
-      showToast('Không thể tạm khóa Quản trị viên (Admin) đang hoạt động duy nhất!', 'error');
+      showAdminFeedback({
+        title: 'Không Thể Tạm Khóa',
+        message: 'Không thể tạm khóa Quản trị viên (Admin) đang hoạt động duy nhất!',
+        type: 'warning',
+      });
       setStaffToToggle(null);
       return;
     }
@@ -371,7 +379,11 @@ export const StaffRbacView: React.FC = () => {
     if (!staffToReset || !canManage) return;
 
     if (!newPasswordInput.trim() || newPasswordInput.trim().length < 4) {
-      showToast('Mật khẩu mới phải có ít nhất 4 ký tự.', 'error');
+      showAdminFeedback({
+        title: 'Mật Khẩu Không Hợp Lệ',
+        message: 'Mật khẩu mới phải có ít nhất 4 ký tự.',
+        type: 'error',
+      });
       return;
     }
 
