@@ -368,7 +368,7 @@ export const TableManagementView: React.FC = () => {
                               {session.totalQuantity} phần gọi
                             </span>
                             <span className="font-headline font-black text-base text-primary">
-                              {session.totalAmount.toLocaleString('vi-VN')}đ
+                              {(Number(session.totalAmount) || 0).toLocaleString('vi-VN')}đ
                             </span>
                           </div>
 
@@ -393,7 +393,7 @@ export const TableManagementView: React.FC = () => {
                               Đã phục vụ & thu tiền
                             </span>
                             <span className="font-headline font-bold text-sm text-on-surface">
-                              {(session.confirmedAmount || session.totalAmount).toLocaleString('vi-VN')}đ
+                              {(Number(session.confirmedAmount ?? session.totalAmount) || 0).toLocaleString('vi-VN')}đ
                             </span>
                           </div>
 

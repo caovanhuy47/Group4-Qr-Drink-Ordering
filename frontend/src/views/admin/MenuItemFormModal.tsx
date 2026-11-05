@@ -46,6 +46,8 @@ export const MenuItemFormModal: React.FC<MenuItemFormModalProps> = ({ dish, onCl
   );
 
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [isUploadingImage, setIsUploadingImage] = useState<boolean>(false);
+  const [localPreview, setLocalPreview] = useState<string>('');
   const [errorMessage, setErrorMessage] = useState<string>('');
   const [imageLoadError, setImageLoadError] = useState<boolean>(false);
 
@@ -61,6 +63,11 @@ export const MenuItemFormModal: React.FC<MenuItemFormModalProps> = ({ dish, onCl
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isSubmitting) return;
+
+    if (isUploadingImage) {
+      setErrorMessage('Đang tải ảnh từ máy tính lên máy chủ. Vui lòng chờ trong giây lát...');
+      return;
+    }
 
     const trimmedName = name.trim();
     if (!trimmedName) {
@@ -258,6 +265,8 @@ export const MenuItemFormModal: React.FC<MenuItemFormModalProps> = ({ dish, onCl
                 setImage(newUrl);
                 setImageLoadError(false);
               }}
+              onPreviewChange={setLocalPreview}
+              onUploadingChange={setIsUploadingImage}
               folder="dishes"
               aspectRatio="dish"
               label="Ảnh món ăn"
@@ -324,7 +333,7 @@ export const MenuItemFormModal: React.FC<MenuItemFormModalProps> = ({ dish, onCl
               <div className="bg-surface-container-lowest border border-border rounded-2xl overflow-hidden shadow-warm-xs">
                 <div className="relative aspect-[4/3] bg-surface-container">
                   <img
-                    src={imageLoadError ? DEFAULT_FALLBACK_IMAGE : (image || DEFAULT_FALLBACK_IMAGE)}
+                    src={imageLoadError ? DEFAULT_FALLBACK_IMAGE : (localPreview || image || DEFAULT_FALLBACK_IMAGE)}
                     alt={name || 'Tên món'}
                     onError={() => setImageLoadError(true)}
                     className="w-full h-full object-cover"
@@ -355,11 +364,11 @@ export const MenuItemFormModal: React.FC<MenuItemFormModalProps> = ({ dish, onCl
                   <div className="flex items-center justify-between pt-2 border-t border-border/40">
                     <div>
                       <span className="font-headline font-black text-base text-primary">
-                        {price.toLocaleString('vi-VN')}đ
+                        {(Number(price) || 0).toLocaleString('vi-VN')}đ
                       </span>
                       {oldPrice && oldPrice > price && (
                         <span className="text-[11px] text-on-surface-variant line-through ml-1.5">
-                          {oldPrice.toLocaleString('vi-VN')}đ
+                          {(Number(oldPrice) || 0).toLocaleString('vi-VN')}đ
                         </span>
                       )}
                     </div>
@@ -382,7 +391,7 @@ export const MenuItemFormModal: React.FC<MenuItemFormModalProps> = ({ dish, onCl
           <button
             type="button"
             onClick={onClose}
-            disabled={isSubmitting}
+            disabled={isSubmitting || isUploadingImage}
             className="px-4 py-2.5 rounded-xl bg-surface-container hover:bg-surface-container-high text-xs font-bold text-on-surface transition-colors disabled:opacity-50"
           >
             Hủy bỏ
@@ -390,13 +399,19 @@ export const MenuItemFormModal: React.FC<MenuItemFormModalProps> = ({ dish, onCl
           <button
             type="submit"
             form="dish-form"
-            disabled={isSubmitting}
+            disabled={isSubmitting || isUploadingImage}
             className="px-6 py-2.5 rounded-xl bg-primary hover:bg-primary-hover text-on-primary text-xs font-bold shadow-xs transition-colors disabled:opacity-50 flex items-center gap-2"
           >
-            {isSubmitting && (
+            {(isSubmitting || isUploadingImage) && (
               <span className="w-3.5 h-3.5 rounded-full border-2 border-on-primary border-t-transparent animate-spin" />
             )}
-            <span>{dish ? 'Cập nhật món ăn' : 'Lưu món vào thực đơn'}</span>
+            <span>
+              {isUploadingImage
+                ? 'Đang tải ảnh lên máy chủ...'
+                : dish
+                ? 'Cập nhật món ăn'
+                : 'Lưu món vào thực đơn'}
+            </span>
           </button>
         </div>
       </div>

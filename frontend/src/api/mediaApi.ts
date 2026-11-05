@@ -16,8 +16,18 @@ export const mediaApi = {
     formData.append('file', file);
 
     const headers: Record<string, string> = {};
-    if (staffId) {
-      headers['x-staff-id'] = staffId;
+    let effectiveStaffId = staffId;
+    if (!effectiveStaffId && typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('huycv_staff_session');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          effectiveStaffId = parsed?.id;
+        }
+      } catch {}
+    }
+    if (effectiveStaffId) {
+      headers['x-staff-id'] = effectiveStaffId;
     }
 
     const response = await fetch(`/api/media/upload?folder=${encodeURIComponent(folder)}`, {

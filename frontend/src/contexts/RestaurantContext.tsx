@@ -714,7 +714,7 @@ export const RestaurantProvider: React.FC<{ children: ReactNode }> = ({ children
 
       showAdminFeedback({
         title: 'Phục Vụ & Thu Tiền Thành Công',
-        message: `Đã phục vụ & thu đủ ${updatedSession.totalAmount.toLocaleString('vi-VN')}đ tại ${targetTable.number}!\nBàn chuyển sang trạng thái "Đang ngồi".`,
+        message: `Đã phục vụ & thu đủ ${(Number(updatedSession.totalAmount) || 0).toLocaleString('vi-VN')}đ tại ${targetTable.number}!\nBàn chuyển sang trạng thái "Đang ngồi".`,
         type: 'success',
       });
       return { success: true, message: 'Xác nhận thành công' };

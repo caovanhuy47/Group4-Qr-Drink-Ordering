@@ -132,9 +132,9 @@ export const HeroBannerCarousel: React.FC<HeroBannerCarouselProps> = ({ banners 
               onError={() =>
                 setImageErrors((prev) => ({ ...prev, [currentBanner.id]: true }))
               }
-              className="absolute inset-0 w-full h-full object-cover object-center opacity-30 mix-blend-overlay pointer-events-none select-none transition-transform duration-700 ease-out group-hover:scale-105"
+              className="absolute inset-0 w-full h-full object-cover object-center pointer-events-none select-none transition-transform duration-700 ease-out group-hover:scale-105"
             />
-            <div className="absolute inset-0 bg-gradient-to-r from-on-surface/85 via-on-surface/50 to-transparent pointer-events-none" />
+            <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/45 to-black/20 pointer-events-none" />
           </>
         )}
 

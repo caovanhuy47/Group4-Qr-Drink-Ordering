@@ -29,7 +29,7 @@ const InAppToast: React.FC = () => {
   if (!toast) return null;
 
   return (
-    <div className="fixed top-4 right-4 z-50 max-w-sm w-full animate-slide-up pointer-events-auto px-4 md:px-0">
+    <div className="fixed bottom-6 md:top-4 md:bottom-auto right-4 md:right-4 left-4 md:left-auto z-50 max-w-sm w-auto animate-slide-up pointer-events-auto">
       <div
         className={`p-3.5 rounded-2xl shadow-warm-lg flex items-center justify-between gap-3 border ${
           toast.type === 'success'

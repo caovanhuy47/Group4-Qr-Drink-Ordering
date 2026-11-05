@@ -434,7 +434,7 @@ export const PaymentHistoryView: React.FC = () => {
                           {r.confirmedBy}
                         </td>
                         <td className="py-3.5 px-4 text-right font-headline font-bold text-sm text-primary whitespace-nowrap">
-                          {r.totalAmount.toLocaleString('vi-VN')}đ
+                          {(Number(r.totalAmount) || 0).toLocaleString('vi-VN')}đ
                         </td>
                         <td className="py-3.5 px-4 text-center whitespace-nowrap">
                           <button
@@ -477,7 +477,7 @@ export const PaymentHistoryView: React.FC = () => {
                         </span>
                       </div>
                       <span className="font-headline font-black text-base text-primary">
-                        {r.totalAmount.toLocaleString('vi-VN')}đ
+                        {(Number(r.totalAmount) || 0).toLocaleString('vi-VN')}đ
                       </span>
                     </div>
 

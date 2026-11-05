@@ -5,6 +5,7 @@ import { useRestaurant } from '../../contexts/useRestaurant';
 interface ImageUploaderProps {
   currentImageUrl?: string;
   onImageChange: (url: string) => void;
+  onPreviewChange?: (previewUrl: string) => void;
   folder?: 'dishes' | 'banners';
   aspectRatio?: 'dish' | 'banner';
   label?: string;
@@ -25,6 +26,7 @@ function formatFileSize(bytes: number): string {
 export const ImageUploader: React.FC<ImageUploaderProps> = ({
   currentImageUrl = '',
   onImageChange,
+  onPreviewChange,
   folder = 'dishes',
   aspectRatio = 'dish',
   label = 'Ảnh đại diện',
@@ -48,13 +50,24 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({
   const [isUploading, setIsUploading] = useState<boolean>(false);
   const [uploadError, setUploadError] = useState<string>('');
   const [urlInput, setUrlInput] = useState<string>(
-    currentImageUrl.startsWith('http') ? currentImageUrl : ''
+    currentImageUrl.startsWith('http') || currentImageUrl.startsWith('/uploads/') ? currentImageUrl : ''
   );
   const [urlImageError, setUrlImageError] = useState<boolean>(false);
 
   useEffect(() => {
     onUploadingChange?.(isUploading);
   }, [isUploading, onUploadingChange]);
+
+  const [prevPropUrl, setPrevPropUrl] = useState<string>(currentImageUrl);
+  if (currentImageUrl !== prevPropUrl) {
+    setPrevPropUrl(currentImageUrl);
+    if (!selectedFile) {
+      setPreviewUrl(currentImageUrl);
+      if (currentImageUrl.startsWith('http') || currentImageUrl.startsWith('/uploads/')) {
+        setUrlInput(currentImageUrl);
+      }
+    }
+  }
 
   // Clean up object URLs on unmount
   useEffect(() => {
@@ -84,9 +97,10 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({
 
     setSelectedFile(file);
 
-    // Immediate local preview
+    // Immediate local preview passed to parent immediately
     const objectUrl = URL.createObjectURL(file);
     setPreviewUrl(objectUrl);
+    onPreviewChange?.(objectUrl);
 
     // 3. Upload to backend
     setIsUploading(true);
@@ -95,10 +109,13 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({
       const res = await mediaApi.uploadImage(file, folder, staffId);
       if (res.success && res.url) {
         onImageChange(res.url);
+        onPreviewChange?.(res.url);
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Lỗi khi tải ảnh lên máy chủ';
       setUploadError(msg);
+      // Revert parent preview to current image on upload failure
+      onPreviewChange?.(currentImageUrl);
     } finally {
       setIsUploading(false);
     }
@@ -142,17 +159,20 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({
     setUploadError('');
     setPreviewUrl(currentImageUrl);
     onImageChange(currentImageUrl);
+    onPreviewChange?.(currentImageUrl);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
   };
 
   const handleUrlChange = (val: string) => {
+    const clean = val.trim();
     setUrlInput(val);
     setUrlImageError(false);
     setUploadError('');
-    onImageChange(val.trim());
-    setPreviewUrl(val.trim());
+    onImageChange(clean);
+    setPreviewUrl(clean);
+    onPreviewChange?.(clean);
   };
 
   const aspectClass = aspectRatio === 'banner' ? 'aspect-[21/9]' : 'aspect-square md:aspect-[4/3]';
@@ -171,11 +191,12 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({
             type="button"
             onClick={() => {
               setSourceMode('file');
-              if (selectedFile) {
-                // Keep selected file preview
+              if (selectedFile && previewUrl) {
+                onPreviewChange?.(previewUrl);
               } else if (currentImageUrl) {
                 setPreviewUrl(currentImageUrl);
                 onImageChange(currentImageUrl);
+                onPreviewChange?.(currentImageUrl);
               }
             }}
             className={`px-2.5 py-1 rounded-md transition-all flex items-center gap-1 ${
@@ -191,8 +212,10 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({
             type="button"
             onClick={() => {
               setSourceMode('url');
-              onImageChange(urlInput.trim());
-              setPreviewUrl(urlInput.trim());
+              const clean = urlInput.trim();
+              onImageChange(clean);
+              setPreviewUrl(clean);
+              onPreviewChange?.(clean);
             }}
             className={`px-2.5 py-1 rounded-md transition-all flex items-center gap-1 ${
               sourceMode === 'url'

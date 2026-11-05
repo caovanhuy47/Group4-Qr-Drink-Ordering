@@ -60,6 +60,8 @@ export const BannerManagementView: React.FC = () => {
   const [priceNote, setPriceNote] = useState('');
   const [ctaText, setCtaText] = useState('Khám phá ngay');
   const [imageUrl, setImageUrl] = useState('');
+  const [localPreviewUrl, setLocalPreviewUrl] = useState('');
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [bgGradient, setBgGradient] = useState(GRADIENT_PRESETS[0].value);
   const [linkType, setLinkType] = useState<BannerLinkType>('none');
   const [linkTargetId, setLinkTargetId] = useState('');
@@ -117,6 +119,8 @@ export const BannerManagementView: React.FC = () => {
     setPriceNote('');
     setCtaText('Khám phá ngay');
     setImageUrl('');
+    setLocalPreviewUrl('');
+    setIsUploadingImage(false);
     setBgGradient(GRADIENT_PRESETS[0].value);
     setLinkType('none');
     setLinkTargetId('');
@@ -130,14 +134,16 @@ export const BannerManagementView: React.FC = () => {
   // Open modal for Edit
   const handleOpenEdit = (banner: Banner) => {
     setEditingBanner(banner);
-    setAdminName(banner.adminName || banner.title);
-    setTitle(banner.title);
+    setAdminName(banner.adminName || banner.title || '');
+    setTitle(banner.title || banner.adminName || '');
     setDescription(banner.description || '');
     setTag(banner.tag || '');
     setDiscountBadge(banner.discountBadge || '');
     setPriceNote(banner.priceNote || '');
     setCtaText(banner.ctaText || 'Khám phá ngay');
     setImageUrl(banner.imageUrl || '');
+    setLocalPreviewUrl('');
+    setIsUploadingImage(false);
     setBgGradient(banner.bgGradient || GRADIENT_PRESETS[0].value);
     setLinkType(banner.linkType || 'none');
     setLinkTargetId(banner.linkTargetId || '');
@@ -157,6 +163,11 @@ export const BannerManagementView: React.FC = () => {
         message: 'Bạn không có quyền chỉnh sửa banner quảng cáo.',
         type: 'error',
       });
+      return;
+    }
+
+    if (isUploadingImage) {
+      setFormError('Ảnh đang được tải lên máy chủ, vui lòng đợi trong giây lát trước khi lưu...');
       return;
     }
 
@@ -545,24 +556,27 @@ export const BannerManagementView: React.FC = () => {
 
                   {/* Thumbnail / Visual Badge */}
                   <div
-                    className={`w-28 h-20 md:w-36 md:h-24 rounded-xl shrink-0 relative overflow-hidden flex flex-col justify-between p-2 text-white border border-border/40 shadow-xs ${
-                      banner.bgGradient || 'from-primary to-secondary'
+                    className={`w-28 h-20 md:w-36 md:h-24 rounded-xl shrink-0 relative overflow-hidden flex flex-col justify-between p-2 text-white border border-border/40 shadow-xs bg-surface-container ${
+                      banner.imageUrl ? '' : (banner.bgGradient || 'from-primary to-secondary')
                     }`}
                   >
-                    {banner.imageUrl && (
-                      <img
-                        src={banner.imageUrl}
-                        alt={banner.title}
-                        onError={(e) => {
-                          (e.currentTarget as HTMLImageElement).style.display = 'none';
-                        }}
-                        className="absolute inset-0 w-full h-full object-cover opacity-40 mix-blend-overlay pointer-events-none"
-                      />
-                    )}
-                    <span className="relative z-10 text-[9px] font-bold uppercase tracking-wider bg-surface-container-lowest/30 px-1.5 py-0.5 rounded backdrop-blur-xs self-start line-clamp-1 max-w-full">
+                    {banner.imageUrl ? (
+                      <>
+                        <img
+                          src={banner.imageUrl}
+                          alt={banner.title}
+                          onError={(e) => {
+                            (e.currentTarget as HTMLImageElement).style.display = 'none';
+                          }}
+                          className="absolute inset-0 w-full h-full object-cover object-center pointer-events-none"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/25 to-transparent pointer-events-none" />
+                      </>
+                    ) : null}
+                    <span className="relative z-10 text-[9px] font-bold uppercase tracking-wider bg-black/40 px-1.5 py-0.5 rounded backdrop-blur-xs self-start line-clamp-1 max-w-full text-white font-semibold">
                       {banner.tag || 'Banner'}
                     </span>
-                    <span className="relative z-10 font-headline font-black text-xs self-end text-secondary-fixed">
+                    <span className="relative z-10 font-headline font-black text-xs self-end text-secondary-fixed drop-shadow-sm">
                       {banner.discountBadge}
                     </span>
                   </div>
@@ -811,8 +825,14 @@ export const BannerManagementView: React.FC = () => {
                   currentImageUrl={imageUrl}
                   onImageChange={(newUrl) => {
                     setImageUrl(newUrl);
+                    setLocalPreviewUrl('');
                     setImageLoadError(false);
                   }}
+                  onPreviewChange={(preview) => {
+                    setLocalPreviewUrl(preview);
+                    setImageLoadError(false);
+                  }}
+                  onUploadingChange={setIsUploadingImage}
                   folder="banners"
                   aspectRatio="banner"
                   label="Hình ảnh Banner quảng cáo"
@@ -989,16 +1009,16 @@ export const BannerManagementView: React.FC = () => {
                     <div
                       className={`relative w-full rounded-2xl p-4 md:p-5 text-on-primary flex flex-col justify-between overflow-hidden shadow-warm-sm transition-all duration-300 min-h-[175px] md:min-h-[200px] ${bgGradient}`}
                     >
-                      {/* Background Image Preview */}
-                      {imageUrl && !imageLoadError && (
+                      {/* Background Image Preview (Crisp & High-Fidelity) */}
+                      {(localPreviewUrl || imageUrl) && !imageLoadError && (
                         <>
                           <img
-                            src={imageUrl}
+                            src={localPreviewUrl || imageUrl}
                             alt={title || 'Preview'}
                             onError={() => setImageLoadError(true)}
-                            className="absolute inset-0 w-full h-full object-cover opacity-35 mix-blend-overlay pointer-events-none select-none"
+                            className="absolute inset-0 w-full h-full object-cover object-center pointer-events-none select-none transition-transform duration-500"
                           />
-                          <div className="absolute inset-0 bg-gradient-to-r from-on-surface/85 via-on-surface/50 to-transparent pointer-events-none" />
+                          <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/45 to-black/20 pointer-events-none" />
                         </>
                       )}
 
@@ -1069,13 +1089,21 @@ export const BannerManagementView: React.FC = () => {
               <button
                 type="submit"
                 form="banner-form"
-                disabled={isSubmitting}
+                disabled={isSubmitting || isUploadingImage}
                 className="px-6 py-2.5 rounded-xl bg-primary hover:bg-primary-hover text-on-primary text-xs font-bold shadow-xs transition-colors disabled:opacity-50 flex items-center gap-2"
               >
-                {isSubmitting && (
+                {(isSubmitting || isUploadingImage) && (
                   <span className="w-3.5 h-3.5 rounded-full border-2 border-on-primary border-t-transparent animate-spin" />
                 )}
-                <span>{editingBanner ? 'Cập nhật banner' : 'Lưu banner mới'}</span>
+                <span>
+                  {isUploadingImage
+                    ? 'Đang tải ảnh lên máy chủ...'
+                    : isSubmitting
+                    ? 'Đang lưu...'
+                    : editingBanner
+                    ? 'Cập nhật banner'
+                    : 'Lưu banner mới'}
+                </span>
               </button>
             </div>
           </div>
@@ -1123,9 +1151,9 @@ export const BannerManagementView: React.FC = () => {
                     onError={(e) => {
                       (e.currentTarget as HTMLImageElement).src = DEFAULT_FALLBACK_IMAGE;
                     }}
-                    className="absolute inset-0 w-full h-full object-cover opacity-35 mix-blend-overlay pointer-events-none select-none"
+                    className="absolute inset-0 w-full h-full object-cover object-center pointer-events-none select-none"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-r from-on-surface/85 via-on-surface/50 to-transparent pointer-events-none" />
+                  <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/45 to-black/20 pointer-events-none" />
                 </>
               )}
 

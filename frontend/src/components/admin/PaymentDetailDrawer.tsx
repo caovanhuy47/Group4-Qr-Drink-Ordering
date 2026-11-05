@@ -171,11 +171,11 @@ export const PaymentDetailDrawer: React.FC<PaymentDetailDrawerProps> = ({ record
 
                   <div className="text-right shrink-0">
                     <span className="font-headline font-bold text-xs text-on-surface block">
-                      {item.totalPrice.toLocaleString('vi-VN')}đ
+                      {(Number(item.totalPrice) || 0).toLocaleString('vi-VN')}đ
                     </span>
                     {item.quantity > 1 && (
                       <span className="text-[10px] text-on-surface-variant block">
-                        ({item.unitPrice.toLocaleString('vi-VN')}đ/phần)
+                        ({(Number(item.unitPrice) || 0).toLocaleString('vi-VN')}đ/phần)
                       </span>
                     )}
                   </div>
@@ -191,7 +191,7 @@ export const PaymentDetailDrawer: React.FC<PaymentDetailDrawerProps> = ({ record
                 Tổng tiền đã thu đủ
               </span>
               <span className="font-headline font-black text-2xl text-primary">
-                {current.totalAmount.toLocaleString('vi-VN')}đ
+                {(Number(current.totalAmount) || 0).toLocaleString('vi-VN')}đ
               </span>
             </div>
 
